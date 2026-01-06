@@ -7,7 +7,7 @@ import './index.css';
  * - upload  : 파일을 업로드/목록을 보여주는 화면
  * - preview : 선택된 파일을 미리보기 하는 화면
  *
- * 상태값(step)을 바꾸는 것만으로, 아래 JSX에서 화면이 조건부 렌더링됨.
+ * 상태값(step)을 바꾸는 것만으로, 아래 JSX에서 화면이 조건부 렌더링됨
  */
 type Step = 'upload' | 'preview';
 
