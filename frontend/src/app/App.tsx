@@ -1,22 +1,20 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-import LoginPage from '../pages/auth/LoginPage';
-import SignupPage from '../pages/auth/SignupPage';
 import UploadPage from '../pages/upload/UploadPage';
 import ProtectedRoute from '../components/common/ProtectedRoute';
+import TopBar from '../components/common/TopBar';
 
 export default function App() {
   return (
     <BrowserRouter>
+      {/* ✅ 페이지 폭 제한(.page) 밖에서 렌더링되므로 "쫙" 퍼짐 */}
+      <TopBar />
+
       <Routes>
-        {/* 기본 진입 */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* ✅ 메인 = 기존 업로드 화면(랜딩처럼) */}
+        <Route path="/" element={<UploadPage />} />
 
-        {/* Auth */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-
-        {/* 로그인 필요 페이지 */}
+        {/* ✅ 로그인 성공 후 실제 작업 페이지가 따로 필요하면 /upload를 보호로 유지 */}
         <Route
           path="/upload"
           element={
@@ -26,8 +24,7 @@ export default function App() {
           }
         />
 
-        {/* 없는 경로 */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
