@@ -1,0 +1,314 @@
+/* =========================
+   Full-screen Auth Modal (Smallpdf Style)
+========================= */
+
+/* 1. Backdrop (Semi-transparent dark) */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    /* Dark dim */
+    backdrop-filter: blur(4px);
+    /* Subtle blur */
+    z-index: 9999;
+}
+
+/* 2. Sliding Shell (Right aligned) */
+.authModalShell {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+
+    /* Width logic: Covers entire screen except a small strip on the left */
+    left: 64px;
+    /* Leave 64px on the left */
+    width: auto;
+    /* Take up remaining space */
+    max-width: none;
+
+    background: #fff;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    /* Right panel fixed width, Left panel takes rest */
+    box-shadow: -10px 0 25px rgba(0, 0, 0, 0.2);
+
+    /* Animation: Slide in from right */
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* Close Button (Top-Right of the shell) */
+.authModalClose {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: white;
+    color: #333;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    /* Above right panel content */
+    transition: background 0.2s;
+}
+
+.authModalClose:hover {
+    background: #f5f5f5;
+}
+
+/* =========================
+   Left Panel: Login Form
+========================= */
+.authModalLeft {
+    padding: 60px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Center form horizontally */
+    justify-content: center;
+    overflow-y: auto;
+    position: relative;
+}
+
+.authFormContainer {
+    width: 100%;
+    max-width: 400px;
+    /* Limit form width */
+    text-align: center;
+}
+
+/* Brand/Logo area */
+.authBrand {
+    margin-bottom: 24px;
+}
+
+.authBrand img {
+    height: 32px;
+}
+
+/* Title */
+.authTitle {
+    font-size: 32px;
+    font-weight: 800;
+    color: #111;
+    margin-bottom: 8px;
+}
+
+.authSubtitle {
+    font-size: 15px;
+    color: #555;
+    margin-bottom: 30px;
+}
+
+.authSubtitle a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* Social Buttons */
+.socialBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: opacity 0.2s;
+}
+
+.socialBtn:hover {
+    opacity: 0.9;
+}
+
+.socialBtn.google {
+    background: #4285f4;
+}
+
+.socialBtn.facebook {
+    background: #1877f2;
+}
+
+.socialBtn.microsoft {
+    background: #2f2f2f;
+}
+
+/* Divider */
+.authDivider {
+    display: flex;
+    align-items: center;
+    color: #999;
+    font-size: 13px;
+    margin: 20px 0;
+    width: 100%;
+}
+
+.authDivider::before,
+.authDivider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e0e0e0;
+}
+
+.authDivider span {
+    padding: 0 10px;
+}
+
+/* Email Form */
+.inputGroup {
+    margin-bottom: 12px;
+    text-align: left;
+    position: relative;
+}
+
+.inputField {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #fafafa;
+    transition: border-color 0.2s;
+}
+
+.inputField:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: white;
+}
+
+.submitBtn {
+    width: 100%;
+    padding: 14px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.submitBtn:hover {
+    background: #1d4ed8;
+}
+
+.forgotPass {
+    display: block;
+    margin-top: 16px;
+    color: #2563eb;
+    font-size: 14px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* =========================
+   Right Panel: Benefits
+========================= */
+.authModalRight {
+    background: #011638;
+    /* Deep Blue from screenshot */
+    color: white;
+    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.proBadge {
+    background: #fdbf2d;
+    /* Yellow badge */
+    color: #000;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    width: fit-content;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.featureTitle {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.4;
+    margin-bottom: 30px;
+}
+
+.featureList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 14px;
+}
+
+.featureItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    opacity: 0.95;
+}
+
+.checkIcon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #00d084;
+    /* Green check circle */
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.checkIcon svg {
+    width: 14px;
+    height: 14px;
+    color: #011638;
+}
+
+/* Responsive: Mobile/Tablet */
+@media (max-width: 900px) {
+    .authModalShell {
+        width: 100vw;
+        max-width: none;
+        grid-template-columns: 1fr;
+        /* Hide right panel or stack? Usually hide right on mobile */
+    }
+
+    .authModalRight {
+        display: none;
+    }
+
+    .authModalLeft {
+        padding: 40px 20px;
+    }
+}

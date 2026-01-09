@@ -1,0 +1,230 @@
+.toolContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 22px 16px 40px;
+}
+
+/* 타이틀 */
+.toolTitleWrap { text-align: center; margin: 10px 0 18px; }
+.breadcrumb { text-align: left; color: #6b7280; font-size: 13px; margin-bottom: 10px; }
+.toolTitle { font-size: 44px; margin: 0; letter-spacing: -0.02em; }
+
+/* 드롭존 */
+.dropzoneSection { margin-top: 12px; }
+
+.dropzoneWide {
+  border-radius: 10px;
+  border: 2px solid #ef4444;
+  background: #ef4444;
+  padding: 26px;
+}
+
+.dzInner {
+  border: 2px dashed rgba(255,255,255,0.7);
+  border-radius: 8px;
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+}
+
+.dzIcon { font-size: 54px; color: white; opacity: 0.9; }
+
+.dzButtonRow { display: flex; justify-content: center; }
+
+.dzBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  border: 0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.15);
+}
+
+.dzBtnIcon { font-size: 18px; }
+.dzBtnCaret { opacity: 0.7; }
+
+.dzHint {
+  color: rgba(255,255,255,0.95);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* 리스트(조건부) */
+.listSection { margin-top: 18px; }
+
+/* 하단 정보 */
+.infoRow {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.infoText { margin: 0; color: #374151; line-height: 1.7; }
+
+.infoRight { display: grid; gap: 10px; }
+.checkItem { color: #111827; font-weight: 700; }
+
+/* 모바일 */
+@media (max-width: 900px) {
+  .toolTitle { font-size: 34px; }
+  .infoRow { grid-template-columns: 1fr; }
+  .dzInner { min-height: 220px; }
+}
+/* 배경 */
+.pageBg {
+  min-height: 100vh;
+  background: #f6f7fb;
+  padding: 24px 0;
+}
+
+/* 중앙 컨테이너 */
+.toolContainer {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 공통 카드 */
+.card {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06);
+}
+
+.topDropzone .dropzoneCard {
+  padding: 14px;
+}
+
+/* 3분할 작업공간 */
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.panelCard {
+  overflow: hidden;
+}
+
+.viewerCard {
+  overflow: hidden;
+}
+
+/* 패널 헤더/바디/푸터 */
+.panelHeader {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.panelSub {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.panelBody {
+  padding: 16px;
+}
+
+.panelBody.noPad {
+  padding: 0;
+}
+
+.panelFooter {
+  padding: 14px 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* 미리보기 영역 */
+.viewerBody {
+  height: 560px; /* 필요하면 조절 */
+  padding: 16px;
+}
+
+.viewerPlaceholder {
+  height: 100%;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  border-radius: 14px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
+.placeholderTitle {
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.placeholderSub {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* 폼/버튼 */
+.fieldLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+.select {
+  width: 100%;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  padding: 0 12px;
+  background: #fff;
+}
+
+.btnPrimary,
+.btnSecondary {
+  height: 40px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btnSecondary {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.18);
+  color: #1e3a8a;
+}
+
+/* 반응형 */
+@media (max-width: 1024px) {
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+  .viewerBody {
+    height: 420px;
+  }
+}

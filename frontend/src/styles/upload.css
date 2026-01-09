@@ -1,0 +1,79 @@
+.container { max-width: 1100px; margin: 0 auto; padding: 28px 16px; }
+
+.uploadHero {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+  align-items: start;
+  padding-top: 18px;
+}
+
+.heroTitle { font-size: 44px; line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
+.heroSub { font-size: 16px; margin: 0 0 18px; color: #4b5563; }
+
+.heroActions { display: flex; gap: 10px; margin-bottom: 18px; }
+.heroBullets { margin: 0; padding-left: 18px; color: #374151; }
+.heroBullets li { margin: 6px 0; }
+
+.dropCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+.dropZone { padding: 22px; display: grid; gap: 10px; justify-items: center; text-align: center; }
+.dropIcon { font-size: 34px; }
+.dropTitle { font-weight: 700; font-size: 16px; }
+.dropHint { font-size: 12px; color: #6b7280; }
+
+.dropFooter { border-top: 1px solid #f3f4f6; padding: 12px 14px; }
+
+.uploadBottom { margin-top: 26px; }
+
+.panel { border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; overflow: hidden; }
+.panelHeader {
+  padding: 14px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid #f3f4f6;
+}
+.panelTitle { margin: 0; font-size: 16px; }
+.panelSub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+.panelBody { padding: 10px; display: grid; gap: 8px; }
+
+.fileRow {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.fileRow:hover { background: #f9fafb; }
+.fileRow.active { border-color: #bfdbfe; background: #eff6ff; }
+
+.fileIcon { width: 36px; height: 36px; display: grid; place-items: center; background: #f3f4f6; border-radius: 10px; }
+.fileMeta { flex: 1; min-width: 0; }
+.fileName { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fileSub { font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dot { opacity: 0.6; }
+
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; }
+.badge.ready { background: #dcfce7; color: #166534; }
+.badge.uploading { background: #e0f2fe; color: #075985; }
+.badge.processing { background: #fef9c3; color: #854d0e; }
+.badge.error { background: #fee2e2; color: #991b1b; }
+
+.progressBar { margin-top: 8px; height: 8px; background: #f3f4f6; border-radius: 999px; overflow: hidden; }
+.progressFill { height: 100%; background: #3b82f6; border-radius: 999px; }
+
+.muted { color: #6b7280; }
+
+/* 모바일 대응 */
+@media (max-width: 900px) {
+  .uploadHero { grid-template-columns: 1fr; }
+}

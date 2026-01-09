@@ -1,0 +1,19 @@
+import { createBrowserRouter } from 'react-router-dom';
+import RootLayout from './layouts/RootLayout';
+
+import UploadPage from './pages/upload/UploadPage';
+// 필요하면 다른 페이지들도 추가
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <RootLayout />,
+    children: [
+      { index: true, element: <UploadPage /> },
+      { path: 'upload', element: <UploadPage /> },
+      // { path: 'pricing', element: <PricingPage /> },
+      // { path: 'teams', element: <TeamsPage /> },
+    ],
+  },
+]);
+
