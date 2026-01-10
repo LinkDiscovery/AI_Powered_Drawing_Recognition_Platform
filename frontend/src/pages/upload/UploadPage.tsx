@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import PdfViewer from '../../components/PdfViewer';
 
 type Step = 'upload' | 'preview';
 type Status = 'idle' | 'uploading' | 'processing' | 'ready' | 'error';
@@ -33,10 +34,12 @@ function uid() {
 
 export default function UploadPage() {
   const [step, setStep] = useState<Step>('upload');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [items, setItems] = useState<UploadItem[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const hasItems = items.length > 0;
+  const activeItem = useMemo(() => items.find((x) => x.id === selectedId) || items[0], [items, selectedId]);
 
   const canGoPreview = useMemo(() => {
     return items.some((it) => it.status === 'ready' || it.status === 'processing' || it.status === 'uploading');
@@ -77,7 +80,12 @@ export default function UploadPage() {
       });
     }
 
-    setItems((prev) => [...next, ...prev]);
+    setItems((prev) => {
+      const merged = [...next, ...prev];
+      // 새로 추가된 첫 번째 파일을 선택
+      if (next.length > 0) setSelectedId(next[0].id);
+      return merged;
+    });
 
     // ✅ 지금은 더미 업로드/처리 진행률 시뮬레이션
     // (나중에 API 붙일 때 이 부분 교체)
@@ -130,6 +138,7 @@ export default function UploadPage() {
 
   function removeItem(id: string) {
     setItems((prev) => prev.filter((x) => x.id !== id));
+    if (selectedId === id) setSelectedId(null);
   }
 
   return (
@@ -186,7 +195,11 @@ export default function UploadPage() {
                     type="button"
                     style={{ ...styles.primaryBtn, opacity: canGoPreview ? 1 : 0.5, cursor: canGoPreview ? 'pointer' : 'not-allowed' }}
                     disabled={!canGoPreview}
-                    onClick={() => setStep('preview')}
+                    onClick={() => {
+                      // 미리보기 진입 시 첫 번째 파일 자동 선택(없으면)
+                      if (!selectedId && items.length > 0) setSelectedId(items[0].id);
+                      setStep('preview');
+                    }}
                   >
                     미리보기로
                   </button>
@@ -225,12 +238,12 @@ export default function UploadPage() {
             ) : null}
           </>
         ) : (
-          /* ✅ preview step(지금은 더미 화면) */
+          /* ✅ preview step */
           <section style={styles.preview}>
             <div style={styles.previewHeader}>
               <div>
                 <div style={styles.listTitle}>미리보기</div>
-                <div style={styles.muted}>여기에 PDF 뷰어/변환 옵션 UI를 붙일 예정</div>
+                <div style={styles.muted}>{activeItem ? activeItem.name : '선택된 파일 없음'}</div>
               </div>
 
               <button type="button" style={styles.ghostBtn} onClick={() => setStep('upload')}>
@@ -239,8 +252,38 @@ export default function UploadPage() {
             </div>
 
             <div style={styles.previewBody}>
-              <div style={styles.previewBox}>[PDF/이미지 미리보기 영역]</div>
-              <div style={styles.previewBox}>[변환 옵션/출력 포맷 선택 영역]</div>
+              <div style={{ ...styles.previewBox, display: 'block', padding: 10 }}>
+                {activeItem?.file ? (
+                  <PdfViewer file={activeItem.file} />
+                ) : (
+                  <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
+                    [PDF/이미지 미리보기 영역] - 파일이 없습니다
+                  </div>
+                )}
+              </div>
+
+              {/* 우측 사이드바: 파일 목록 선택 */}
+              <div style={styles.previewSidebar}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>파일 목록</div>
+                <ul style={styles.sideList}>
+                  {items.map(it => (
+                    <li
+                      key={it.id}
+                      style={{
+                        ...styles.sideItem,
+                        background: selectedId === it.id ? '#f3f4f6' : 'transparent',
+                        borderColor: selectedId === it.id ? '#1a73e8' : 'transparent',
+                      }}
+                      onClick={() => setSelectedId(it.id)}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {it.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#666' }}>{it.status}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </section>
         )}
@@ -433,4 +476,24 @@ const styles: Record<string, React.CSSProperties> = {
     placeItems: 'center',
     color: '#64748b',
   },
+  previewSidebar: {
+    border: '1px solid #eef2f7',
+    borderRadius: 16,
+    padding: 12,
+    background: '#fafafa',
+  },
+  sideList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  sideItem: {
+    padding: '8px 10px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    border: '1px solid transparent',
+  }
 };

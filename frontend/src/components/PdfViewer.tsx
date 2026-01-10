@@ -176,7 +176,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
       try {
         // pdf.js renderTask가 cancel을 지원하면 취소(빠른 페이지 전환 시 충돌/잔상 방지)
         renderTask?.cancel?.();
-      } catch {}
+      } catch { }
     };
   }, [pdf, page, pageCount, scale, rotation]); // 이 값들 중 하나라도 바뀌면 다시 렌더
 
@@ -315,7 +315,10 @@ export default function PdfViewer({ file }: PdfViewerProps) {
         }}
       >
         {/* PDF 페이지를 그릴 캔버스. ref로 접근해서 pdf.js가 직접 그린다 */}
-        <canvas ref={canvasRef} />
+        <canvas
+          ref={canvasRef}
+          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
+        />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useAuthDrawer } from '../../app/providers/AuthDrawerProvider';
+import { useAuthDrawer } from './AuthDrawerProvider';
 
 export default function TopNav() {
   const { openAuth } = useAuthDrawer();

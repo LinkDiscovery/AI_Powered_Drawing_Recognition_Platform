@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import Drawer from '../../components/common/Drawer';
+import Drawer from './Drawer';
 
 type AuthMode = 'login' | 'signup';
 

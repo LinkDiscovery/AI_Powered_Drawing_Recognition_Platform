@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
-import TopNav from '../components/common/TopNav';
-import { AuthDrawerProvider } from './providers/AuthDrawerProvider';
+import TopNav from './TopNav';
+import { AuthDrawerProvider } from './AuthDrawerProvider';
 
 import '../styles/layout.css';
 
