@@ -137,9 +137,9 @@ export default function UploadPage() {
       <div style={styles.container}>
         {/* ✅ 상단 제목/설명(노란 헤더 아래 흰 영역) */}
         <div style={styles.hero}>
-          <h1 style={styles.h1}>PDF 변환기</h1>
+          <h1 style={styles.h1}>AiDraw</h1>
           <p style={styles.p}>
-            PDF 또는 이미지를 업로드하고 변환/미리보기를 진행합니다. (Smallpdf 느낌으로 UI 커스터마이징 예정)
+            AI 도면 분석 및 변환 플랫폼 - 도면을 업로드하고 분석을 시작하세요.
           </p>
         </div>
 

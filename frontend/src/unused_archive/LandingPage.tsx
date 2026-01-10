@@ -1,8 +1,8 @@
 import { useSearchParams } from 'react-router-dom';
-import Header from '../../components/common/Header';
-import Modal from '../../components/common/Modal';
-import LoginForm from '../auth/LoginForm';
-import SignupForm from '../auth/SignupForm';
+import Header from './Header';
+import Modal from './Modal';
+import LoginForm from './LoginForm';
+import SignupForm from './SignupForm'; // Assuming these are also here based on file list
 
 export default function LandingPage() {
   const [params, setParams] = useSearchParams();

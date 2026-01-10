@@ -139,7 +139,7 @@ export default function SmallpdfHeader() {
         <nav className="sp-nav" aria-label="Primary">
           <ul className="sp-nav__list">
             {smallpdfHeaderConfig.primaryTabs.map((t) => (
-              <li key={t.id} className="sp-nav__item">
+              <li key={t.id} className={`sp-nav__item ${t.className || ''}`}>
                 <TabLink item={t} active={activeTabId === t.id} />
               </li>
             ))}

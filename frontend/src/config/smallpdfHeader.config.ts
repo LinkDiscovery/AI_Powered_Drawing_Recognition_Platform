@@ -18,6 +18,7 @@ export type NavLink = {
   href: string;
   target?: '_blank';
   rel?: string;
+  className?: string; // CSS class for specific styling (e.g. responsive hiding)
 };
 
 export type MegaMenuItem = NavLink & {
@@ -82,10 +83,10 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
       {
         id: 'logo-icon',
         href: '/kr',
-        title: 'Smallpdf',
+        title: 'AiDraw',
         img: {
-          src: 'https://s.smallpdf.com/static/40d7d8365bc6e925.svg',
-          alt: 'Smallpdf logo',
+          src: '/assets/images/logo-blueprint.png',
+          alt: 'AiDraw logo',
           width: 40,
           height: 40,
         },
@@ -94,28 +95,15 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
       {
         id: 'logo-wordmark-desktop',
         href: '/kr',
-        title: 'Smallpdf',
+        title: 'AiDraw',
         img: {
-          src: 'https://s.smallpdf.com/static/bd7581cc63cf9d0b.svg',
-          alt: 'Smallpdf logo',
+          src: '/assets/images/logo-blueprint-alt.png',
+          alt: 'AiDraw logo',
           width: 98,
           height: 40,
         },
         // DOM에서 display:flex 로 보이는 조건부 블록( __cond-2743038 )
         display: { kind: 'breakpoint', showOn: ['desktop', 'tablet'] },
-      },
-      {
-        id: 'logo-wordmark-mobile',
-        href: '/kr',
-        title: 'Smallpdf',
-        img: {
-          src: 'https://s.smallpdf.com/static/4f1cf8e8f9da22d9.svg',
-          alt: 'Smallpdf logo',
-          width: 27,
-          height: 40,
-        },
-        // DOM에서 display:none로 숨겨져 있던 로고 변형(__cond-2743040) 대응
-        display: { kind: 'breakpoint', showOn: ['mobile'] },
       },
     ],
   },
@@ -235,12 +223,12 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
   },
 
   primaryTabs: [
-    { id: 'tab-compress', label: '압축', href: '/kr/compress-pdf' },
-    { id: 'tab-convert', label: '변환하기', href: '/kr/pdf-converter' },
-    { id: 'tab-merge', label: '병합', href: '/kr/merge-pdf' },
-    { id: 'tab-edit', label: '편집', href: '/kr/edit-pdf' },
-    { id: 'tab-sign', label: '서명', href: '/kr/sign-pdf' },
-    { id: 'tab-ai', label: 'AI PDF', href: '/kr/ai-pdf' },
+    { id: 'tab-compress', label: '압축', href: '/kr/compress-pdf', className: 'hide-below-1000' },
+    { id: 'tab-convert', label: '변환하기', href: '/kr/pdf-converter', className: 'hide-below-1100' },
+    { id: 'tab-merge', label: '병합', href: '/kr/merge-pdf', className: 'hide-below-800' },
+    { id: 'tab-edit', label: '편집', href: '/kr/edit-pdf', className: 'hide-below-900' },
+    { id: 'tab-sign', label: '서명', href: '/kr/sign-pdf', className: 'hide-below-900' },
+    { id: 'tab-ai', label: 'AI PDF', href: '/kr/ai-pdf', className: 'hide-below-800' },
   ],
 
   rightLinks: [
