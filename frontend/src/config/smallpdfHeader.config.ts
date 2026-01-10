@@ -85,10 +85,10 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
         href: '/kr',
         title: 'AiDraw',
         img: {
-          src: '/assets/images/logo-blueprint.png',
+          src: '/assets/images/그림1.png',
           alt: 'AiDraw logo',
-          width: 40,
-          height: 40,
+          width: 65,
+          height: 60,
         },
         display: { kind: 'always' },
       },
@@ -97,10 +97,10 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
         href: '/kr',
         title: 'AiDraw',
         img: {
-          src: '/assets/images/logo-blueprint-alt.png',
+          src: '/assets/images/그림2.png',
           alt: 'AiDraw logo',
-          width: 98,
-          height: 40,
+          width: 115,
+          height: 30,
         },
         // DOM에서 display:flex 로 보이는 조건부 블록( __cond-2743038 )
         display: { kind: 'breakpoint', showOn: ['desktop', 'tablet'] },

@@ -136,8 +136,8 @@ export default function UploadPage() {
     <main style={styles.page}>
       <div style={styles.container}>
         {/* ✅ 상단 제목/설명(노란 헤더 아래 흰 영역) */}
-        <div style={styles.hero}>
-          <h1 style={styles.h1}>AiDraw</h1>
+        <div style={{ ...styles.hero, textAlign: 'center' }}>
+          <h1 style={styles.h1}>PDF 변환 프로그램</h1>
           <p style={styles.p}>
             AI 도면 분석 및 변환 플랫폼 - 도면을 업로드하고 분석을 시작하세요.
           </p>

@@ -11,7 +11,8 @@
   /* max-width 제거 -> 전체 폭 사용 */
   width: 100%;
   margin: 0 auto;
-  padding: 10px 24px; /* 좌우 여백 조금 더 줌 */
+  padding: 0 8px;
+  /* 좌우 여백 조금 더 줌 */
   display: flex;
   align-items: center;
   gap: 16px;
@@ -38,14 +39,26 @@
 }
 
 .sp-logo {
-  display: none; /* 기본은 숨김, 아래 show-xxx로 켬 */
+  display: none;
+  /* 기본은 숨김, 아래 show-xxx로 켬 */
 }
 
 /* display rules */
-.d-always { display: inline-block; }
-.show-desktop { display: inline-block; }
-.show-tablet { display: inline-block; }
-.show-mobile { display: inline-block; }
+.d-always {
+  display: inline-block;
+}
+
+.show-desktop {
+  display: inline-block;
+}
+
+.show-tablet {
+  display: inline-block;
+}
+
+.show-mobile {
+  display: inline-block;
+}
 
 /* CENTER */
 .sp-nav {
@@ -126,7 +139,7 @@
   background: #fff;
   border: 1px solid #eaeaea;
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
   padding: 14px;
 }
 
@@ -187,6 +200,7 @@
   padding: 8px 6px;
   border-radius: 8px;
 }
+
 .sp-right__link:hover {
   background: #f5f5f5;
 }
@@ -210,6 +224,7 @@
   background: transparent;
   color: #222;
 }
+
 .sp-btn--ghost:hover {
   background: #f5f5f5;
 }
@@ -218,6 +233,7 @@
   background: #1a73e8;
   color: #fff;
 }
+
 .sp-btn--primary:hover {
   filter: brightness(0.95);
 }
@@ -233,6 +249,7 @@
   cursor: pointer;
   padding: 8px;
 }
+
 .sp-hamburger span {
   display: block;
   height: 2px;
@@ -244,32 +261,74 @@
 /* ✅ 반응형: Smallpdf처럼 모바일에서 탭/우측링크 줄이고 햄버거 보이기 */
 
 /* Custom responsive hiding classes */
-@media (max-width: 1100px) { .hide-below-1100 { display: none; } }
-@media (max-width: 1000px) { .hide-below-1000 { display: none; } }
-@media (max-width: 900px) { .hide-below-900 { display: none; } }
-@media (max-width: 800px) { .hide-below-800 { display: none; } }
+@media (max-width: 1100px) {
+  .hide-below-1100 {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .hide-below-1000 {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .hide-below-900 {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .hide-below-800 {
+    display: none;
+  }
+}
 
 /* Prevent text breaking */
-.sp-tab, .sp-tools__trigger, .sp-right__link {
+.sp-tab,
+.sp-tools__trigger,
+.sp-right__link {
   white-space: nowrap;
 }
 
 /* Ensure flex items don't shrink too much */
-.sp-brand, .sp-nav__item, .sp-right__links > li {
+.sp-brand,
+.sp-nav__item,
+.sp-right__links>li {
   flex-shrink: 0;
 }
 
 @media (max-width: 900px) {
-  .sp-tools__panel { width: 90vw; }
-  .sp-tools__grid { grid-template-columns: repeat(2, 1fr); }
+  .sp-tools__panel {
+    width: 90vw;
+  }
+
+  .sp-tools__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
-  .sp-nav { display: none; }
-  .sp-right__links { display: none; }
-  .sp-hamburger { display: inline-block; }
+  .sp-nav {
+    display: none;
+  }
+
+  .sp-right__links {
+    display: none;
+  }
+
+  .sp-hamburger {
+    display: inline-block;
+  }
 
   /* 로고 변형: desktop/tablet 숨기고 mobile만 보이게 하고 싶으면 여기서 조정 */
-  .show-desktop, .show-tablet { display: none; }
-  .show-mobile { display: inline-block; }
+  .show-desktop,
+  .show-tablet {
+    display: none;
+  }
+
+  .show-mobile {
+    display: inline-block;
+  }
 }
