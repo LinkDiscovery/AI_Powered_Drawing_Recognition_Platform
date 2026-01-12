@@ -6,6 +6,7 @@ import {
   type NavLink,
 } from '../../config/smallpdfHeader.config';
 import AuthModal from '../auth/AuthModal';
+import { useAuth } from '../../context/AuthContext';
 import './smallpdfHeader.css';
 
 function displayClass(rule: DisplayRule) {
@@ -45,6 +46,7 @@ export default function SmallpdfHeader() {
   const { pathname } = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false); // Auth Modal State
+  const { user, logout, isAuthenticated } = useAuth(); // Auth Context
 
   // 활성 탭 판정(가장 단순하게: pathname이 href로 시작하면 active)
   const activeTabId = useMemo(() => {
@@ -60,7 +62,7 @@ export default function SmallpdfHeader() {
         {/* LEFT: Brand */}
         <div className="sp-brand">
           <Link className="sp-brand__link" to={smallpdfHeaderConfig.brand.logoVariants[0].href}>
-            <div className="sp-brand__logos" aria-label="Smallpdf">
+            <div className="sp-brand__logos" aria-label="AiDraw">
               {smallpdfHeaderConfig.brand.logoVariants.map((v) => (
                 <img
                   key={v.id}
@@ -165,16 +167,36 @@ export default function SmallpdfHeader() {
           </ul>
 
           <div className="sp-auth">
-            <button
-              className="sp-btn sp-btn--ghost"
-              type="button"
-              onClick={() => setAuthOpen(true)}
-            >
-              {smallpdfHeaderConfig.auth.login.label}
-            </button>
-            <button className="sp-btn sp-btn--primary" type="button">
-              {smallpdfHeaderConfig.auth.trial.label}
-            </button>
+            {isAuthenticated && user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>{user.name}</span>
+                <button
+                  className="sp-btn sp-btn--ghost"
+                  type="button"
+                  onClick={logout}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                >
+                  로그아웃
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  className="sp-btn sp-btn--ghost"
+                  type="button"
+                  onClick={() => setAuthOpen(true)}
+                >
+                  {smallpdfHeaderConfig.auth.login.label}
+                </button>
+                <button
+                  className="sp-btn sp-btn--primary"
+                  type="button"
+                  onClick={() => setAuthOpen(true)} // Open modal also for trial/signup
+                >
+                  {smallpdfHeaderConfig.auth.trial.label}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger (나중에 모바일 메뉴 붙일 때 사용) */}

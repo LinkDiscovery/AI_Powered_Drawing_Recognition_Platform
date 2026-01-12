@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '../../context/AuthContext';
 import './authModal.css';
 
 /* Icons */
@@ -23,7 +24,27 @@ interface AuthModalProps {
     onClose: () => void;
 }
 
+
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+    // State to toggle between Login and Sign Up
+    const [view, setView] = useState<'login' | 'signup'>('login');
+    const { login, signup } = useAuth();
+
+    // Form states
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+
+    // Reset view to login when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setView('login');
+            setEmail('');
+            setPassword('');
+            setName('');
+        }
+    }, [isOpen]);
+
     // Prevent body scroll when open
     useEffect(() => {
         if (isOpen) {
@@ -35,6 +56,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             document.body.style.overflow = '';
         };
     }, [isOpen]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (view === 'login') {
+                await login(email);
+            } else {
+                await signup(email, name);
+            }
+            onClose(); // Close modal on success
+        } catch (error) {
+            console.error("Auth error", error);
+            // In a real app we would set an error state here
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -48,45 +84,92 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     &times;
                 </button>
 
-                {/* LEFT PANEL: Login Form */}
+                {/* LEFT PANEL: Form */}
                 <div className="authModalLeft">
                     <div className="authFormContainer">
                         <div className="authBrand">
                             {/* Using the text "Smallpdf Pro" to match style since we don't have the exact logo asset handy right now, or reuse existing */}
-                            <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: 0 }}>Smallpdf Pro</h2>
+                            <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: 0 }}>AiDraw Pro</h2>
                         </div>
 
-                        <h1 className="authTitle">Smallpdf로 로그인</h1>
-                        <p className="authSubtitle">
-                            계정이 없으신가요? <a href="#">계정 만들기</a>
-                        </p>
+                        {view === 'login' ? (
+                            <>
+                                <h1 className="authTitle">AiDraw로 로그인</h1>
+                                <p className="authSubtitle">
+                                    계정이 없으신가요?{' '}
+                                    <a href="#" onClick={(e) => { e.preventDefault(); setView('signup'); }}>
+                                        계정 만들기
+                                    </a>
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h1 className="authTitle">계정 만들기</h1>
+                                <p className="authSubtitle">
+                                    이미 계정이 있으신가요?{' '}
+                                    <a href="#" onClick={(e) => { e.preventDefault(); setView('login'); }}>
+                                        로그인
+                                    </a>
+                                </p>
+                            </>
+                        )}
 
                         <button className="socialBtn google">
                             <span className="icon"><GoogleIcon /></span>
-                            Google 계정으로 계속하기
+                            Google 계정으로 {view === 'login' ? '계속하기' : '등록'}
                         </button>
                         <button className="socialBtn facebook">
                             <span className="icon"><FacebookIcon /></span>
-                            Facebook 계정으로 계속하기
+                            Facebook 계정으로 {view === 'login' ? '계속하기' : '등록'}
                         </button>
                         <button className="socialBtn microsoft">
                             <span className="icon"><MicrosoftIcon /></span>
-                            Microsoft 계정으로 계속하기
+                            Microsoft 계정으로 {view === 'login' ? '계속하기' : '등록'}
                         </button>
 
                         <div className="authDivider"><span>또는</span></div>
 
-                        <form onSubmit={(e) => e.preventDefault()}>
+                        <form onSubmit={handleSubmit}>
+                            {view === 'signup' && (
+                                <div className="inputGroup">
+                                    <input
+                                        type="text"
+                                        className="inputField"
+                                        placeholder="이름"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required={view === 'signup'}
+                                    />
+                                </div>
+                            )}
                             <div className="inputGroup">
-                                <input type="email" className="inputField" placeholder="이메일" />
+                                <input
+                                    type="email"
+                                    className="inputField"
+                                    placeholder="이메일"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
                             </div>
                             <div className="inputGroup">
-                                <input type="password" className="inputField" placeholder="비밀번호" />
+                                <input
+                                    type="password"
+                                    className="inputField"
+                                    placeholder="비밀번호"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
                             </div>
-                            <button type="submit" className="submitBtn">로그인</button>
+                            <button type="submit" className="submitBtn">
+                                {view === 'login' ? '로그인' : '계정 만들기'}
+                            </button>
                         </form>
 
-                        <a href="#" className="forgotPass">암호를 잊었나요?</a>
+                        {view === 'login' && (
+                            <a href="#" className="forgotPass">암호를 잊었나요?</a>
+                        )}
                     </div>
                 </div>
 
@@ -96,7 +179,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         <span role="img" aria-label="crown">👑</span> Pro
                     </div>
                     <h2 className="featureTitle">
-                        Smallpdf Pro를 사용하면 다음과 같은<br />
+                        AiDraw Pro를 사용하면 다음과 같은<br />
                         혜택을 누릴 수 있습니다.
                     </h2>
 
