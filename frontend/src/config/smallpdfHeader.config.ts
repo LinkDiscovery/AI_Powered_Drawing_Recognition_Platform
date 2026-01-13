@@ -82,7 +82,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
     logoVariants: [
       {
         id: 'logo-icon',
-        href: '/kr',
+        href: '/',
         title: 'AiDraw',
         img: {
           src: '/assets/images/그림1.png',
@@ -94,7 +94,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
       },
       {
         id: 'logo-wordmark-desktop',
-        href: '/kr',
+        href: '/',
         title: 'AiDraw',
         img: {
           src: '/assets/images/그림2.png',

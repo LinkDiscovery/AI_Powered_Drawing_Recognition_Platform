@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useGoogleLogin } from '@react-oauth/google';
 import './authModal.css';
 
 /* Icons */
@@ -18,6 +19,17 @@ const CheckIcon = () => (
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
     </div>
 );
+const EyeIcon = ({ visible }: { visible: boolean }) => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {visible ? (
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        ) : (
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07-2.3 2.3" />
+        )}
+        {visible && <circle cx="12" cy="12" r="3" />}
+        {!visible && <line x1="1" y1="1" x2="23" y2="23" />}
+    </svg>
+);
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -28,12 +40,68 @@ interface AuthModalProps {
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     // State to toggle between Login and Sign Up
     const [view, setView] = useState<'login' | 'signup'>('login');
-    const { login, signup } = useAuth();
+    const { login, signup, googleAuth } = useAuth();
 
+    const handleGoogleLoginSuccess = async (tokenResponse: any) => {
+        try {
+            await googleAuth(tokenResponse.access_token);
+            onClose();
+        } catch (error) {
+            console.error("Failed to authenticate with Google", error);
+            alert("로그인 처리 중 오류가 발생했습니다.");
+        }
+    };
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: handleGoogleLoginSuccess,
+        onError: () => console.log('Google Login Failed'),
+        onNonOAuthError: (err) => {
+            // Check if client ID is missing/default
+            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+            if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
+                alert("Google Client ID가 설정되지 않았습니다. backend/.env 파일을 확인해주세요.");
+            }
+            console.log("Non-OAuth Error:", err);
+        }
+    });
+
+    const handleGoogleClick = async () => {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+        const isConfigured = clientId && clientId !== 'YOUR_GOOGLE_CLIENT_ID_HERE';
+
+        if (!isConfigured) {
+            // Mock Login Flow for Development/Testing without Google Cloud Setup
+            if (confirm("Google Client ID가 설정되지 않았습니다.\n\n[테스트 모드]\nGoogle 로그인 동작을 시뮬레이션 하시겠습니까?\n(실제 Google 인증은 건너뜁니다)")) {
+                const mockToken = "mock_google_token_" + Date.now();
+                await handleGoogleLoginSuccess({ access_token: mockToken, isMock: true });
+            }
+            return;
+        }
+        googleLogin();
+    };
+
+    // Form states
     // Form states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+
+    // Password UI states
+    const [showPassword, setShowPassword] = useState(false);
+    const [strength, setStrength] = useState(0);
+
+    // Calculate strength on password change
+    useEffect(() => {
+        if (!password) {
+            setStrength(0);
+            return;
+        }
+        let score = 0;
+        if (password.length > 4) score += 1; // Basic length
+        if (password.length >= 8) score += 1; // Good length
+        if (password.length >= 10 && /[A-Z0-9]/.test(password)) score += 1; // Strong
+        setStrength(Math.min(score, 3));
+    }, [password]);
 
     // Reset view to login when modal closes
     useEffect(() => {
@@ -61,14 +129,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         e.preventDefault();
         try {
             if (view === 'login') {
-                await login(email);
+                await login(email, password);
             } else {
-                await signup(email, name);
+                await signup(email, name, password);
             }
             onClose(); // Close modal on success
         } catch (error) {
             console.error("Auth error", error);
-            // In a real app we would set an error state here
+            alert("인증 오류가 발생했습니다. 이메일과 비밀번호를 확인해주세요.");
         }
     };
 
@@ -114,7 +182,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             </>
                         )}
 
-                        <button className="socialBtn google">
+                        <button className="socialBtn google" onClick={handleGoogleClick}>
                             <span className="icon"><GoogleIcon /></span>
                             Google 계정으로 {view === 'login' ? '계속하기' : '등록'}
                         </button>
@@ -153,14 +221,31 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                 />
                             </div>
                             <div className="inputGroup">
-                                <input
-                                    type="password"
-                                    className="inputField"
-                                    placeholder="비밀번호"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    required
-                                />
+                                <div className="passwordWrapper">
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="inputField passwordInput"
+                                        placeholder="비밀번호"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className="passwordToggle"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        tabIndex={-1}
+                                    >
+                                        <EyeIcon visible={showPassword} />
+                                    </button>
+                                </div>
+                                {view === 'signup' && password.length > 0 && (
+                                    <div className="strengthMeter">
+                                        <div className={`strengthBar ${strength >= 1 ? 'filled level-' + strength : ''}`} />
+                                        <div className={`strengthBar ${strength >= 2 ? 'filled level-' + strength : ''}`} />
+                                        <div className={`strengthBar ${strength >= 3 ? 'filled level-' + strength : ''}`} />
+                                    </div>
+                                )}
                             </div>
                             <button type="submit" className="submitBtn">
                                 {view === 'login' ? '로그인' : '계정 만들기'}

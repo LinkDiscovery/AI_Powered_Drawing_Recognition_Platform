@@ -9,8 +9,9 @@ export interface User {
 
 interface AuthContextType {
     user: User | null;
-    login: (email: string) => Promise<void>; // In real app, password would be here
-    signup: (email: string, name: string) => Promise<void>;
+    login: (email: string, password?: string) => Promise<void>;
+    signup: (email: string, name: string, password?: string) => Promise<void>;
+    googleAuth: (token: string) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -35,46 +36,119 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    const login = async (email: string) => {
-        // Mock login: Just create a session for the email
-        // In a real mock, we might check a "users" list, but for now just accept any
-        // If we wanted to be strict, we'd check if email matches a previously signed up user,
-        // but for "just make it work", we can auto-create or retrieve.
+    const login = async (email: string, password?: string) => {
+        // password is optional to support the existing code temporarily, 
+        // but for real auth it should be required.
+        // If password is not provided (e.g. existing calls?), we might throw or handle gracefully.
+        // But we will update call sites.
 
-        // Let's pretend we fetch user details. 
-        // For simplicity in this "make it work" request, we'll just set them as logged in.
-        const mockUser: User = {
-            email,
-            name: email.split('@')[0], // Default name from email if not provided
-            plan: 'free', // Default to free on login
-        };
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
 
-        saveUser(mockUser);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Valid credentials required');
+            }
+
+            const data = await response.json();
+            // data: { token, email, name }
+            const newUser: User = {
+                email: data.email,
+                name: data.name,
+                plan: 'free' // backend doesn't return plan yet
+            };
+            saveUser(newUser, data.token);
+        } catch (error) {
+            console.error("Login failed", error);
+            throw error;
+        }
     };
 
-    const signup = async (email: string, name: string) => {
-        const newUser: User = {
-            email,
-            name,
-            plan: 'pro', // Give them Pro on signup to make them happy? Or free? Let's say Free.
-        };
-        saveUser(newUser);
+    const signup = async (email: string, name: string, password?: string) => {
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, name })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Signup failed');
+            }
+
+            const data = await response.json();
+            const newUser: User = {
+                email: data.email,
+                name: data.name,
+                plan: 'free'
+            };
+            saveUser(newUser, data.token);
+        } catch (error) {
+            console.error("Signup failed", error);
+            throw error;
+        }
     };
+
+    const googleAuth = async (token: string) => {
+        try {
+            // For mock/test mode
+            if (token.startsWith("mock_")) {
+                const mockUser: User = {
+                    email: "test_user@example.com",
+                    name: "테스트 유저",
+                    plan: 'free'
+                };
+                saveUser(mockUser, token);
+                return;
+            }
+
+            const response = await fetch('http://localhost:8080/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+            });
+
+            if (!response.ok) {
+                throw new Error('Google Auth Failed');
+            }
+
+            const data = await response.json();
+            const newUser: User = {
+                email: data.email,
+                name: data.name,
+                plan: 'free'
+            };
+            saveUser(newUser, data.token);
+        } catch (error) {
+            console.error("Google auth failed", error);
+            throw error;
+        }
+    }
 
     const logout = () => {
         setUser(null);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
+        localStorage.removeItem('aidraw_auth_token');
     };
 
-    const saveUser = (u: User) => {
+    const saveUser = (u: User, token?: string) => {
         setUser(u);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(u));
+        if (token) {
+            localStorage.setItem('aidraw_auth_token', token);
+        }
     };
 
     const value = {
         user,
         login,
         signup,
+        googleAuth,
         logout,
         isAuthenticated: !!user,
     };

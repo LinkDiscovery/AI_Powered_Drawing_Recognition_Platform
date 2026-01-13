@@ -200,6 +200,76 @@
     background: white;
 }
 
+/* Password Toggle & Wrapper */
+.passwordWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.passwordInput {
+    padding-right: 48px; /* Space for eye icon */
+}
+
+.passwordToggle {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    padding: 4px;
+    display: grid;
+    place-items: center;
+}
+.passwordToggle:hover {
+    color: #333;
+}
+
+/* Strength Meter */
+.strengthMeter {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    margin-bottom: 2px;
+}
+
+.strengthBar {
+    flex: 1;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    transition: background-color 0.3s;
+}
+
+/* Levels */
+.strengthBar.filled.level-1 {
+    background: #ff4d4f; /* Weak: Red */
+}
+/* If level is 2, first bar is orange/yellow? typically bars change color together or fill up */
+/* Let's make them fill up. Bars 1..N get colored. */
+
+.strengthBar.filled.level-2 {
+    background: #faad14; /* Medium: Orange */
+}
+.strengthBar.filled.level-3 {
+    background: #52c41a; /* Strong: Green */
+}
+
+/* If level is 2, make both bars Orange. If 3, all Green. */
+/* CSS Cascade logic in JS handles which bars have .filled class. 
+   Here we handle colors. 
+   Level 1: All filled bars are red? 
+   No, usually:
+   Weak: [Red] [Gray] [Gray]
+   Medium: [Orange] [Orange] [Gray]
+   Strong: [Green] [Green] [Green]
+*/
+.strengthMeter:has(.filled.level-1) .strengthBar.filled { background: #ff4d4f; }
+.strengthMeter:has(.filled.level-2) .strengthBar.filled { background: #faad14; }
+.strengthMeter:has(.filled.level-3) .strengthBar.filled { background: #52c41a; }
+/* Note: :has is modern, but widely supported. If fallback needed, pass color class to container */
+
 .submitBtn {
     width: 100%;
     padding: 14px;

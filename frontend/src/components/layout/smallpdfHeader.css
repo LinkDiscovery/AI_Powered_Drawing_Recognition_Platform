@@ -125,9 +125,20 @@
   background: #f5f5f5;
 }
 
+/* Fixed alignment for icons in trigger */
+.sp-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .sp-tools__label {
   font-size: 15px;
   font-weight: 600;
+  line-height: 1;
+  /* Tighten line height to center better with icons */
+  padding-top: 1px;
+  /* Optical adjustment if needed */
 }
 
 .sp-tools__panel {

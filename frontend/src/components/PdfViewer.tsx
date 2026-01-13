@@ -18,6 +18,19 @@ type PdfViewerProps = {
   file: File | null;
 };
 
+// Button style constant
+const iconBtnStyle: React.CSSProperties = {
+  border: 'none',
+  background: 'transparent',
+  cursor: 'pointer',
+  padding: '6px',
+  borderRadius: 6,
+  display: 'grid',
+  placeItems: 'center',
+  color: '#444',
+  transition: 'background 0.2s',
+};
+
 // PdfViewer 컴포넌트 export (PDF 미리보기 담당)
 export default function PdfViewer({ file }: PdfViewerProps) {
   // ✅ canvas DOM을 직접 조작해야 하므로 ref로 캔버스 요소를 잡아둠
@@ -194,127 +207,172 @@ export default function PdfViewer({ file }: PdfViewerProps) {
     setScale((s) => Math.max(0.4, Math.round((s - 0.1) * 10) / 10));
   }
 
+  // ✅ 전체 화면(최대화) 모드 상태
+  const [isMaximized, setIsMaximized] = useState(false);
+
   // 컨테이너 폭에 맞춤(대충 900px 기준 → 실제 UI 폭에 맞춰도 됨)
   function fitWidth() {
-    // 현재는 간단히 "보기 좋은 고정값"으로 맞춤
-    // 다음 단계에서 실제 컨테이너 width 계산해서 정확히 맞출 수도 있음
-    setScale(1.5); // 폭 맞춤을 임시로 1.5배로 설정
+    setScale(1.5);
   }
 
   // JSX 반환(렌더링)
+  // 최대화 모드일 때와 아닐 때의 스타일 분기
+  const containerStyle: React.CSSProperties = isMaximized
+    ? {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+      background: '#f0f0f0',
+      padding: 20,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12
+    }
+    : { display: 'grid', gap: 12 };
+
+  const canvasContainerStyle: React.CSSProperties = {
+    border: '1px solid #ddd',
+    borderRadius: 12,
+    padding: 10,
+    background: 'white',
+    overflow: 'auto',
+    // 최대화 모드면 남는 공간 꽉 채우기 (flex: 1), 아니면 높이 제한
+    ...(isMaximized ? { flex: 1, maxHeight: 'none' } : { maxHeight: 720 })
+  };
+
   return (
-    // 전체 레이아웃: grid로 위아래 섹션 간격 12px
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={containerStyle}>
       {/* 상단 정보/컨트롤 바 */}
       <div
         style={{
-          display: 'flex', // 가로 정렬
-          flexWrap: 'wrap', // 좁아지면 줄바꿈
-          alignItems: 'center', // 수직 가운데 정렬
-          gap: 8, // 요소 사이 간격
-          padding: '10px 12px', // 내부 여백
-          border: '1px solid #e5e5e5', // 테두리
-          borderRadius: 10, // 모서리 둥글게
-          background: '#fafafa', // 배경색
+          display: 'flex',
+          // flexWrap: 'wrap', // ✅ 한 줄 유지 (제거)
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          border: '1px solid #eaeaea',
+          borderRadius: 12,
+          background: '#fff',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
         }}
       >
-        {/* 왼쪽 타이틀 */}
-        <div style={{ fontWeight: 600, marginRight: 8 }}>PDF 미리보기</div>
+        <div style={{ fontWeight: 600, marginRight: 8, fontSize: 14, whiteSpace: 'nowrap' }}>PDF 미리보기</div>
 
-        {/* 파일이 있을 때는 파일명/용량 표시 */}
         {file ? (
-          <div style={{ fontSize: 12, color: '#555' }}>
+          <div style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMaximized ? 'none' : 200 }}>
             {fileName} · {fileSize}
           </div>
         ) : (
-          // 파일이 없을 때 안내 문구
-          <div style={{ fontSize: 12, color: '#777' }}>파일을 업로드하면 표시됩니다.</div>
+          <div style={{ fontSize: 13, color: '#888' }}>파일을 업로드하면 표시됩니다.</div>
         )}
 
-        {/* 가운데 남는 공간 채우기(오른쪽 컨트롤을 밀어냄) */}
         <div style={{ flex: 1 }} />
 
-        {/* 이전 페이지 버튼(가능할 때만 활성화) */}
-        <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canPrev}>
-          ◀
-        </button>
+        {/* Page Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#f5f5f5', borderRadius: 8, padding: '2px 4px' }}>
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!canPrev}
+            style={iconBtnStyle}
+            title="이전 페이지"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
 
-        {/* 페이지 입력 + 전체 페이지 표시 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input
-            value={page} // 현재 page 상태 표시
-            onChange={(e) => {
-              // 입력값을 숫자로 변환
-              const v = Number(e.target.value);
-              // 유효한 숫자면 page 상태 업데이트(범위 보정은 렌더 effect에서 수행)
-              if (Number.isFinite(v)) setPage(v);
-            }}
-            disabled={!pdf} // pdf가 없으면 입력 막기
-            style={{ width: 64, padding: '6px 8px', borderRadius: 8, border: '1px solid #ddd' }} // input 스타일
-          />
-          {/* / pageCount 표시 (아직 모르면 '-') */}
-          <span style={{ fontSize: 12, color: '#555' }}>/ {pageCount || '-'}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 4px' }}>
+            <input
+              value={page}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setPage(v);
+              }}
+              disabled={!pdf}
+              style={{
+                width: 32,
+                padding: '2px 0',
+                borderRadius: 4,
+                border: 'none',
+                background: 'transparent',
+                textAlign: 'right',
+                fontWeight: 600,
+                fontSize: 13
+              }}
+            />
+            <span style={{ fontSize: 13, color: '#666', whiteSpace: 'nowrap' }}>/ {pageCount || '-'}</span>
+          </div>
+
+          <button
+            onClick={() => setPage((p) => Math.min(pageCount || 1, p + 1))}
+            disabled={!canNext}
+            style={iconBtnStyle}
+            title="다음 페이지"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
         </div>
 
-        {/* 다음 페이지 버튼(가능할 때만 활성화) */}
-        <button onClick={() => setPage((p) => Math.min(pageCount || 1, p + 1))} disabled={!canNext}>
-          ▶
-        </button>
+        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
 
-        {/* 버튼 그룹 구분용 여백 */}
-        <span style={{ width: 10 }} />
-
-        {/* 축소 버튼 */}
-        <button onClick={zoomOut} disabled={!pdf}>
-          -
-        </button>
-        {/* 현재 확대율 표시 */}
-        <div style={{ fontSize: 12, minWidth: 54, textAlign: 'center' }}>
-          {Math.round(scale * 100)}%
+        {/* Zoom Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <button onClick={zoomOut} disabled={!pdf} style={iconBtnStyle} title="축소">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+          </button>
+          <div style={{ fontSize: 13, minWidth: 44, textAlign: 'center', fontWeight: 500 }}>
+            {Math.round(scale * 100)}%
+          </div>
+          <button onClick={zoomIn} disabled={!pdf} style={iconBtnStyle} title="확대">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+          </button>
         </div>
-        {/* 확대 버튼 */}
-        <button onClick={zoomIn} disabled={!pdf}>
-          +
+
+        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
+
+        {/* Action Buttons: Fit Width, Rotate */}
+        <button onClick={fitWidth} disabled={!pdf} style={iconBtnStyle} title="폭 맞춤">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
         </button>
 
-        {/* 폭 맞춤 버튼 */}
-        <button onClick={fitWidth} disabled={!pdf}>
-          폭 맞춤
-        </button>
-
-        {/* 회전 버튼: 90도씩 회전(0→90→180→270→0) */}
         <button
-          onClick={() =>
-            setRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)
-          }
+          onClick={() => setRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)}
           disabled={!pdf}
+          style={iconBtnStyle}
+          title="시계 방향 회전"
         >
-          회전
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" /></svg>
+        </button>
+
+        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
+
+        {/* Maximize Toggle */}
+        <button
+          onClick={() => setIsMaximized(!isMaximized)}
+          style={{ ...iconBtnStyle, color: isMaximized ? '#2563eb' : '#444' }}
+          title={isMaximized ? "원래 크기로" : "전체 화면으로 보기"}
+        >
+          {isMaximized ? (
+            // Collapse Icon
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
+          ) : (
+            // Expand Icon
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+          )}
         </button>
       </div>
 
       {/* 상태 표시 */}
       {(loadingDoc || rendering) && (
-        <div style={{ fontSize: 12, color: '#555' }}>
-          {/* 로딩 중이면 문서 로딩, 아니면 페이지 렌더링 문구 */}
+        <div style={{ fontSize: 12, color: '#555', paddingLeft: 4 }}>
           {loadingDoc ? 'PDF 로딩 중…' : '페이지 렌더링 중…'}
         </div>
       )}
-      {/* 에러 메시지가 있으면 붉은색으로 표시 */}
-      {error && <div style={{ color: 'crimson', fontSize: 12 }}>{error}</div>}
+      {error && <div style={{ color: 'crimson', fontSize: 12, paddingLeft: 4 }}>{error}</div>}
 
       {/* 캔버스 영역 */}
-      <div
-        style={{
-          border: '1px solid #ddd', // 테두리
-          borderRadius: 12, // 둥근 모서리
-          padding: 10, // 안쪽 여백
-          background: 'white', // 배경
-          overflow: 'auto', // 캔버스가 크면 스크롤
-          maxHeight: 720, // 최대 높이 제한(스크롤 유도)
-        }}
-      >
-        {/* PDF 페이지를 그릴 캔버스. ref로 접근해서 pdf.js가 직접 그린다 */}
+      <div style={canvasContainerStyle}>
         <canvas
           ref={canvasRef}
           style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
