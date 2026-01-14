@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   smallpdfHeaderConfig,
@@ -42,11 +42,53 @@ function TabLink({ item, active }: { item: NavLink; active: boolean }) {
   );
 }
 
+const SessionTimer = ({ expiresAt }: { expiresAt: number | null }) => {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    if (!expiresAt) {
+      setTimeLeft('');
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const diff = (expiresAt * 1000) - now;
+
+      if (diff <= 0) {
+        setTimeLeft('00:00');
+        clearInterval(interval);
+        return;
+      }
+
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!timeLeft) return null;
+
+  return (
+    <span style={{
+      fontSize: '13px',
+      color: '#d93025',
+      fontWeight: 'bold',
+      fontVariantNumeric: 'tabular-nums',
+      marginRight: '8px'
+    }}>
+      {timeLeft}
+    </span>
+  );
+};
+
 export default function SmallpdfHeader() {
   const { pathname } = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false); // Auth Modal State
-  const { user, logout, isAuthenticated } = useAuth(); // Auth Context
+  const { user, logout, isAuthenticated, expiresAt } = useAuth(); // Auth Context
 
   // 활성 탭 판정(가장 단순하게: pathname이 href로 시작하면 active)
   const activeTabId = useMemo(() => {
@@ -169,6 +211,7 @@ export default function SmallpdfHeader() {
           <div className="sp-auth">
             {isAuthenticated && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <SessionTimer expiresAt={expiresAt} />
                 <span style={{ fontSize: '14px', fontWeight: 600 }}>{user.name}</span>
                 <button
                   className="sp-btn sp-btn--ghost"

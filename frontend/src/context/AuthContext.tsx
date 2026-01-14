@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { jwtDecode } from 'jwt-decode';
 
 // User type definition
 export interface User {
@@ -14,21 +15,42 @@ interface AuthContextType {
     googleAuth: (token: string) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
+    expiresAt: number | null; // Unix timestamp in seconds
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'aidraw_auth_user';
+const TOKEN_KEY = 'aidraw_auth_token';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [expiresAt, setExpiresAt] = useState<number | null>(null);
 
     // Load user from localStorage on mount
     useEffect(() => {
         const storedUser = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedUser) {
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+
+        if (storedUser && storedToken) {
             try {
-                setUser(JSON.parse(storedUser));
+                const parsedUser = JSON.parse(storedUser);
+                setUser(parsedUser);
+
+                // Decode token to get expiration
+                try {
+                    const decoded: any = jwtDecode(storedToken);
+                    if (decoded.exp) {
+                        setExpiresAt(decoded.exp);
+                        // Optional: Check if already expired
+                        if (Date.now() >= decoded.exp * 1000) {
+                            console.log("Token expired on load, logging out");
+                            logout();
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to decode token on load", e);
+                }
             } catch (e) {
                 console.error("Failed to parse stored user", e);
                 localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -37,11 +59,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const login = async (email: string, password?: string) => {
-        // password is optional to support the existing code temporarily, 
-        // but for real auth it should be required.
-        // If password is not provided (e.g. existing calls?), we might throw or handle gracefully.
-        // But we will update call sites.
-
         try {
             const response = await fetch('http://localhost:8080/api/auth/login', {
                 method: 'POST',
@@ -55,11 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             const data = await response.json();
-            // data: { token, email, name }
             const newUser: User = {
                 email: data.email,
                 name: data.name,
-                plan: 'free' // backend doesn't return plan yet
+                plan: 'free'
             };
             saveUser(newUser, data.token);
         } catch (error) {
@@ -103,7 +119,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     name: "테스트 유저",
                     plan: 'free'
                 };
-                saveUser(mockUser, token);
+                // Mock expiration: 30 minutes from now
+                const mockExp = Math.floor(Date.now() / 1000) + (30 * 60);
+                // We can't really decode a mock token string with jwtDecode properly 
+                // unless we fake the structure, so we'll just set state manually for mock.
+                // However, saveUser tries to decode. 
+                // Let's just create a dummy "saveUser" for mock or handle it inside saveUser.
+
+                // For simplicity in this tool call, I'll allow saveUser to fail decoding 
+                // but we should manually setExpiresAt for mock.
+                setUser(mockUser);
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mockUser));
+                localStorage.setItem(TOKEN_KEY, token);
+                setExpiresAt(mockExp);
                 return;
             }
 
@@ -132,15 +160,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = () => {
         setUser(null);
+        setExpiresAt(null);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
-        localStorage.removeItem('aidraw_auth_token');
+        localStorage.removeItem(TOKEN_KEY);
     };
 
-    const saveUser = (u: User, token?: string) => {
+    const saveUser = (u: User, token: string) => {
         setUser(u);
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(u));
-        if (token) {
-            localStorage.setItem('aidraw_auth_token', token);
+        localStorage.setItem(TOKEN_KEY, token);
+
+        try {
+            const decoded: any = jwtDecode(token);
+            if (decoded.exp) {
+                setExpiresAt(decoded.exp);
+            }
+        } catch (e) {
+            console.error("Invalid token format", e);
         }
     };
 
@@ -151,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         googleAuth,
         logout,
         isAuthenticated: !!user,
+        expiresAt
     };
 
     return (
