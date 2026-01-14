@@ -177,38 +177,72 @@
     padding: 0 10px;
 }
 
-/* Email Form */
+/* Email Form & Input Styling */
 .inputGroup {
-    margin-bottom: 12px;
+    margin-bottom: 20px;
     text-align: left;
     position: relative;
 }
 
-.inputField {
-    width: 100%;
-    padding: 12px 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 15px;
-    background: #fafafa;
-    transition: border-color 0.2s;
+.inputLabel {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    transition: color 0.2s;
 }
 
-.inputField:focus {
-    outline: none;
+.inputLabel.error {
+    color: #d93025;
+}
+
+.inputWrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.inputWrapper:focus-within {
     border-color: #2563eb;
     background: white;
 }
 
-/* Password Toggle & Wrapper */
-.passwordWrapper {
-    position: relative;
+.inputWrapper.error {
+    border-color: #d93025;
+}
+
+.inputIcon {
+    position: absolute;
+    left: 12px;
+    color: #888;
     display: flex;
     align-items: center;
+    pointer-events: none;
+}
+
+.inputField {
+    width: 100%;
+    padding: 12px 14px 12px 40px;
+    /* 40px left padding for icon */
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    outline: none;
+}
+
+/* Password Toggle & Wrapper */
+.passwordWrapper {
+    /* Inherits inputWrapper styles now */
 }
 
 .passwordInput {
-    padding-right: 48px; /* Space for eye icon */
+    padding-right: 48px;
+    /* Space for eye icon */
 }
 
 .passwordToggle {
@@ -222,8 +256,19 @@
     display: grid;
     place-items: center;
 }
+
 .passwordToggle:hover {
     color: #333;
+}
+
+/* Error Message */
+.authErrorMsg {
+    color: #d93025;
+    font-size: 14px;
+    margin-top: -10px;
+    margin-bottom: 15px;
+    font-weight: 600;
+    text-align: left;
 }
 
 /* Strength Meter */
@@ -244,16 +289,21 @@
 
 /* Levels */
 .strengthBar.filled.level-1 {
-    background: #ff4d4f; /* Weak: Red */
+    background: #ff4d4f;
+    /* Weak: Red */
 }
+
 /* If level is 2, first bar is orange/yellow? typically bars change color together or fill up */
 /* Let's make them fill up. Bars 1..N get colored. */
 
 .strengthBar.filled.level-2 {
-    background: #faad14; /* Medium: Orange */
+    background: #faad14;
+    /* Medium: Orange */
 }
+
 .strengthBar.filled.level-3 {
-    background: #52c41a; /* Strong: Green */
+    background: #52c41a;
+    /* Strong: Green */
 }
 
 /* If level is 2, make both bars Orange. If 3, all Green. */
@@ -265,9 +315,18 @@
    Medium: [Orange] [Orange] [Gray]
    Strong: [Green] [Green] [Green]
 */
-.strengthMeter:has(.filled.level-1) .strengthBar.filled { background: #ff4d4f; }
-.strengthMeter:has(.filled.level-2) .strengthBar.filled { background: #faad14; }
-.strengthMeter:has(.filled.level-3) .strengthBar.filled { background: #52c41a; }
+.strengthMeter:has(.filled.level-1) .strengthBar.filled {
+    background: #ff4d4f;
+}
+
+.strengthMeter:has(.filled.level-2) .strengthBar.filled {
+    background: #faad14;
+}
+
+.strengthMeter:has(.filled.level-3) .strengthBar.filled {
+    background: #52c41a;
+}
+
 /* Note: :has is modern, but widely supported. If fallback needed, pass color class to container */
 
 .submitBtn {

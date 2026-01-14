@@ -19,6 +19,18 @@ const CheckIcon = () => (
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
     </div>
 );
+const MailIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+    </svg>
+);
+const LockIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+    </svg>
+);
 const EyeIcon = ({ visible }: { visible: boolean }) => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {visible ? (
@@ -89,6 +101,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     // Password UI states
     const [showPassword, setShowPassword] = useState(false);
     const [strength, setStrength] = useState(0);
+    const [authError, setAuthError] = useState(false);
 
     // Calculate strength on password change
     useEffect(() => {
@@ -110,6 +123,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             setEmail('');
             setPassword('');
             setName('');
+            setAuthError(false);
         }
     }, [isOpen]);
 
@@ -127,6 +141,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setAuthError(false); // Reset error
         try {
             if (view === 'login') {
                 await login(email, password);
@@ -136,7 +151,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             onClose(); // Close modal on success
         } catch (error) {
             console.error("Auth error", error);
-            alert("인증 오류가 발생했습니다. 이메일과 비밀번호를 확인해주세요.");
+            // alert("인증 오류가 발생했습니다. 이메일과 비밀번호를 확인해주세요."); // Remove alert
+            setAuthError(true); // Set error state
         }
     };
 
@@ -200,34 +216,43 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         <form onSubmit={handleSubmit}>
                             {view === 'signup' && (
                                 <div className="inputGroup">
-                                    <input
-                                        type="text"
-                                        className="inputField"
-                                        placeholder="이름"
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        required={view === 'signup'}
-                                    />
+                                    <label className="inputLabel">이름</label>
+                                    <div className="inputWrapper">
+                                        <input
+                                            type="text"
+                                            className="inputField"
+                                            placeholder="이름"
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            required={view === 'signup'}
+                                        />
+                                    </div>
                                 </div>
                             )}
                             <div className="inputGroup">
-                                <input
-                                    type="email"
-                                    className="inputField"
-                                    placeholder="이메일"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                />
+                                <label className={`inputLabel ${authError ? 'error' : ''}`}>이메일</label>
+                                <div className={`inputWrapper ${authError ? 'error' : ''}`}>
+                                    <span className="inputIcon"><MailIcon /></span>
+                                    <input
+                                        type="email"
+                                        className="inputField"
+                                        placeholder="이메일을 입력하세요"
+                                        value={email}
+                                        onChange={(e) => { setEmail(e.target.value); if (authError) setAuthError(false); }}
+                                        required
+                                    />
+                                </div>
                             </div>
                             <div className="inputGroup">
-                                <div className="passwordWrapper">
+                                <label className={`inputLabel ${authError ? 'error' : ''}`}>비밀번호</label>
+                                <div className={`inputWrapper passwordWrapper ${authError ? 'error' : ''}`}>
+                                    <span className="inputIcon"><LockIcon /></span>
                                     <input
                                         type={showPassword ? "text" : "password"}
                                         className="inputField passwordInput"
                                         placeholder="비밀번호"
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        onChange={(e) => { setPassword(e.target.value); if (authError) setAuthError(false); }}
                                         required
                                     />
                                     <button
@@ -247,6 +272,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                     </div>
                                 )}
                             </div>
+
+                            {authError && (
+                                <div className="authErrorMsg">
+                                    잘못된 이메일 또는 암호
+                                </div>
+                            )}
+
                             <button type="submit" className="submitBtn">
                                 {view === 'login' ? '로그인' : '계정 만들기'}
                             </button>

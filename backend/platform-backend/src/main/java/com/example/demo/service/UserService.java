@@ -1,30 +1,37 @@
 package com.example.demo.service;
 
 import com.example.demo.model.User;
+import com.example.demo.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 @Service
 public class UserService {
-    // In-memory storage for demonstration.
-    // In a real app, use a Repository/Database.
-    private final Map<String, User> userStore = new ConcurrentHashMap<>();
+
+    private final UserRepository userRepository;
+
+    @Autowired
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public User register(String email, String password, String name) {
-        if (userStore.containsKey(email)) {
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new RuntimeException("User already exists");
         }
         User user = new User(email, password, name);
-        userStore.put(email, user);
-        return user;
+        return userRepository.save(user);
     }
 
     public User login(String email, String password) {
-        User user = userStore.get(email);
-        if (user != null && user.getPassword().equals(password)) {
-            return user;
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (user.getPassword().equals(password)) {
+                return user;
+            }
         }
         return null;
     }
