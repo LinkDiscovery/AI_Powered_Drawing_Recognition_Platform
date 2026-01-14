@@ -1,5 +1,6 @@
 // React 훅들 import: useEffect(사이드이펙트), useMemo(메모이제이션), useRef(DOM 참조), useState(상태)
 import { useEffect, useMemo, useRef, useState } from 'react';
+import SelectionOverlay from './SelectionOverlay';
 // pdf.js 라이브러리 import (PDF 로드/페이지 렌더링)
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -54,6 +55,10 @@ export default function PdfViewer({ file }: PdfViewerProps) {
   const [rendering, setRendering] = useState(false);
   // ✅ 에러 메시지(있으면 화면에 표시)
   const [error, setError] = useState('');
+
+  // ✅ 표제란 선택 모드
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedRect, setSelectedRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
 
   // ✅ 파일명 문자열(파일이 없으면 빈 문자열)
   const fileName = file?.name ?? '';
@@ -347,6 +352,26 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
         <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
 
+        {/* Title Block Selection Toggle */}
+        <button
+          onClick={() => {
+            setIsSelectionMode(!isSelectionMode);
+            setSelectedRect(null); // Reset selection when toggling
+          }}
+          style={{ ...iconBtnStyle, color: isSelectionMode ? '#d93025' : '#444', width: 'auto', padding: '6px 8px', gap: 4 }}
+          title="표제란 영역 설정"
+          disabled={!pdf}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <path d="M9 3v18" />
+            <path d="M3 9h18" />
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>표제란 설정</span>
+        </button>
+
+        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
+
         {/* Maximize Toggle */}
         <button
           onClick={() => setIsMaximized(!isMaximized)}
@@ -371,11 +396,45 @@ export default function PdfViewer({ file }: PdfViewerProps) {
       )}
       {error && <div style={{ color: 'crimson', fontSize: 12, paddingLeft: 4 }}>{error}</div>}
 
+      {/* Selected Rect Info and Save Button */}
+      {selectedRect && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 4, marginTop: -4, marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: '#2563eb' }}>
+            선택됨: x={selectedRect.x.toFixed(0)}, y={selectedRect.y.toFixed(0)}, w={selectedRect.width.toFixed(0)}, h={selectedRect.height.toFixed(0)}
+          </div>
+          <button
+            onClick={() => {
+              alert(`저장되었습니다!\n\n좌표:\n${JSON.stringify(selectedRect, null, 2)}\n\n(이미지는 서버 전송 시 함께 처리됩니다)`);
+              // Here is where actual save logic will go (API call)
+              console.log("Saving selection coordinates:", selectedRect);
+            }}
+            style={{
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              padding: '4px 8px',
+              fontSize: 12,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            선택 영역 저장
+          </button>
+        </div>
+      )}
+
       {/* 캔버스 영역 */}
-      <div style={canvasContainerStyle}>
+      <div style={{ ...canvasContainerStyle, position: 'relative' }}>
         <canvas
           ref={canvasRef}
           style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
+        />
+        <SelectionOverlay
+          isActive={isSelectionMode}
+          scale={scale}
+          rect={selectedRect}
+          onChange={(rect) => setSelectedRect(rect)}
         />
       </div>
     </div>
