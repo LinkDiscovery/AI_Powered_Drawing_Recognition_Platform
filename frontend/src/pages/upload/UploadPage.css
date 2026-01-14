@@ -1,0 +1,308 @@
+/* UploadPage.css - Refactored for Red Banner Layout */
+
+.tool-page {
+    min-height: 100vh;
+    background-color: #ffffff;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Breadcrumb */
+/* Breadcrumb */
+/* Breadcrumb */
+.tool-breadcrumb {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 24px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
+    /* Margin removed as requested */
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 0;
+}
+
+.tool-breadcrumb__home {
+    display: flex;
+    align-items: center;
+    color: #999;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.tool-breadcrumb__home:hover {
+    color: #333;
+}
+
+.tool-breadcrumb__separator {
+    color: #ccc;
+    font-size: 12px;
+}
+
+.tool-breadcrumb__current {
+    color: #333;
+    font-weight: 500;
+}
+
+/* Main Content Wrapper */
+.tool-main-content {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Header Section (Title) */
+.tool-header {
+    text-align: center;
+    margin-top: 30px;
+    /* Reduced from 60px */
+    margin-bottom: 24px;
+    /* Reduced from 40px */
+}
+
+.tool-header__title {
+    font-size: 42px;
+    font-weight: 800;
+    color: #1a1a1a;
+    /* Black title */
+    margin: 0 0 16px;
+    letter-spacing: -0.5px;
+}
+
+/* Analysis: User mentioned "AI Based Drawing Extraction". */
+/* Subtitle should reflect that context subtly if not explicitly requested */
+.tool-header__subtitle {
+    font-size: 18px;
+    font-weight: 500;
+    color: #4b5563;
+    margin: 0;
+}
+
+/* Hero Section: The Red Banner Dropzone */
+.tool-hero-banner {
+    width: 100%;
+    max-width: 100%;
+    /* Container controls width now */
+    background-color: #F23030;
+    /* User's Custom Red #F23030 */
+    background: #F23030;
+    /* Solid color preferred over gradient for flat look */
+    border-radius: 12px;
+    /* Increased radius for outer box */
+    padding: 8px;
+    /* Matching user's request for tighter fit */
+    box-shadow: 0 12px 24px rgba(229, 62, 62, 0.083);
+    margin-bottom: 0px;
+    /* Removed margin as requested */
+    position: relative;
+    transition: transform 0.2s;
+
+    /* Flex Center Content */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    /* Reduced from 260px */
+    /* Ensure strictly defined height for the hero look */
+}
+
+/* The actual clickable area with dashed border */
+.uploader-dropzone {
+    width: 100%;
+    max-width: 100%;
+    border: 2px dashed rgba(255, 255, 255, 0.9);
+    /* High density/visibility */
+    border-radius: 8px;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background-color: #DC2E2E;
+    /* User's inner color #DC2E2E */
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.uploader-dropzone:hover,
+.uploader-dropzone--active {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #ffffff;
+}
+
+/* Icon inside Red Banner */
+.uploader-icon {
+    margin-bottom: 0;
+    /* Drastically reduced gap */
+    color: #ffffff;
+}
+
+/* Button inside Red Banner */
+.uploader-btn {
+    background-color: #ffffff;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 20px 12px 16px;
+    /* Reduced padding */
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0px;
+    /* Drastically reduced gap */
+    position: relative;
+}
+
+.uploader-btn:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+}
+
+.uploader-text {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    opacity: 0.9;
+    margin: 6px 0 0 0;
+    /* Top margin 6px as requested */
+}
+
+/* File List State (Inside Red Banner) */
+/* When files are present, Smallpdf usually shows a list inside the same container or a new white card? */
+/* Reference image 0 shows a white card list. Reference image 1 shows the upload state. */
+/* Users likely want the list to be clean. A white card *inside* or *replacing* the banner is common. */
+/* Let's make the list view a White Card replacing the content, but keeping the banner style if consistent, */
+/* OR simpler: The Banner *becomes* the list container. */
+/* For contrast, a White Card `uploader-list-card` inside the banner is best. */
+
+/* Centered white card */
+.uploader-list-card {
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 24px;
+    width: 100%;
+    max-width: 900px;
+    /* Slightly wider */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+}
+
+.uploader-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 16px;
+}
+
+.uploader-list-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.uploader-items {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.uploader-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.uploader-item__icon {
+    font-size: 24px;
+    margin-right: 16px;
+}
+
+.uploader-item__name {
+    flex: 1;
+    font-weight: 600;
+    color: #333;
+}
+
+.uploader-item__delete {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+}
+
+.uploader-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-secondary {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #e53e3e;
+    color: #fff;
+    border: 0;
+    padding: 10px 24px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(229, 62, 62, 0.4);
+}
+
+/* Features Section */
+.tool-features {
+    width: 100%;
+    max-width: 1200px;
+    padding: 0 24px 60px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+}
+
+.feature-card__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.check-icon {
+    color: #22c55e;
+    /* Green check */
+}

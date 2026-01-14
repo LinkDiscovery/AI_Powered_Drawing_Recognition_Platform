@@ -215,9 +215,21 @@ export default function PdfViewer({ file }: PdfViewerProps) {
   // ✅ 전체 화면(최대화) 모드 상태
   const [isMaximized, setIsMaximized] = useState(false);
 
-  // 컨테이너 폭에 맞춤(대충 900px 기준 → 실제 UI 폭에 맞춰도 됨)
-  function fitWidth() {
-    setScale(1.5);
+  // 컨테이너 폭에 맞춤
+  async function fitWidth() {
+    if (!pdf) return;
+    try {
+      const pageObj = await pdf.getPage(page);
+      const viewport = pageObj.getViewport({ scale: 1.0 });
+      const containerWidth = canvasRef.current?.parentElement?.clientWidth || 0;
+      if (containerWidth > 0) {
+        // 여백(padding) 등 고려하여 약간 작게 잡음
+        const newScale = (containerWidth - 40) / viewport.width;
+        setScale(Math.floor(newScale * 10) / 10);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   // JSX 반환(렌더링)
@@ -245,19 +257,20 @@ export default function PdfViewer({ file }: PdfViewerProps) {
     background: 'white',
     overflow: 'auto',
     // 최대화 모드면 남는 공간 꽉 채우기 (flex: 1), 아니면 높이 제한
-    ...(isMaximized ? { flex: 1, maxHeight: 'none' } : { maxHeight: 720 })
+    ...(isMaximized ? { flex: 1, maxHeight: 'none' } : { maxHeight: 900, minHeight: 500 })
   };
 
   return (
     <div style={containerStyle}>
       {/* 상단 정보/컨트롤 바 */}
+      {/* 상단 정보/컨트롤 바 */}
       <div
         style={{
           display: 'flex',
-          // flexWrap: 'wrap', // ✅ 한 줄 유지 (제거)
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: 8,
-          padding: '8px 12px',
+          padding: '12px',
           border: '1px solid #eaeaea',
           borderRadius: 12,
           background: '#fff',
@@ -334,21 +347,67 @@ export default function PdfViewer({ file }: PdfViewerProps) {
           </button>
         </div>
 
-        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
+        <div style={{ flexBasis: '100%', height: 1, background: '#f5f5f5', margin: '4px 0' }} />
 
-        {/* Action Buttons: Fit Width, Rotate */}
-        <button onClick={fitWidth} disabled={!pdf} style={iconBtnStyle} title="폭 맞춤">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
-        </button>
+        <div style={{ flex: 1 }} />
 
-        <button
-          onClick={() => setRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)}
-          disabled={!pdf}
-          style={iconBtnStyle}
-          title="시계 방향 회전"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" /></svg>
-        </button>
+        {/* Action Buttons: Fit Width, Rotate, Maximize */}
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button
+            onClick={fitWidth}
+            disabled={!pdf}
+            style={{
+              ...iconBtnStyle,
+              width: 'auto',
+              padding: '6px 12px',
+              gap: 4,
+              flexDirection: 'column',
+              height: 'auto'
+            }}
+            title="폭 맞춤"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>폭 맞춤</span>
+          </button>
+
+          <button
+            onClick={() => setRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)}
+            disabled={!pdf}
+            style={{
+              ...iconBtnStyle,
+              width: 'auto',
+              padding: '6px 12px',
+              gap: 4,
+              flexDirection: 'column',
+              height: 'auto'
+            }}
+            title="시계 방향 회전"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" /></svg>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>회전</span>
+          </button>
+
+          <button
+            onClick={() => setIsMaximized(!isMaximized)}
+            style={{
+              ...iconBtnStyle,
+              color: isMaximized ? '#2563eb' : '#444',
+              width: 'auto',
+              padding: '6px 12px',
+              gap: 4,
+              flexDirection: 'column',
+              height: 'auto'
+            }}
+            title={isMaximized ? "원래 크기로" : "전체 화면으로 보기"}
+          >
+            {isMaximized ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+            )}
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>{isMaximized ? "축소" : "전체화면"}</span>
+          </button>
+        </div>
 
         <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
 
@@ -358,7 +417,17 @@ export default function PdfViewer({ file }: PdfViewerProps) {
             setIsSelectionMode(!isSelectionMode);
             setSelectedRect(null); // Reset selection when toggling
           }}
-          style={{ ...iconBtnStyle, color: isSelectionMode ? '#d93025' : '#444', width: 'auto', padding: '6px 8px', gap: 4 }}
+          style={{
+            ...iconBtnStyle,
+            color: isSelectionMode ? '#d93025' : '#444',
+            width: 'auto',
+            padding: '6px 12px',
+            gap: 4,
+            background: isSelectionMode ? '#fff0f0' : 'transparent',
+            border: isSelectionMode ? '1px solid #ffcccc' : '1px solid transparent',
+            flexDirection: 'column',
+            height: 'auto'
+          }}
           title="표제란 영역 설정"
           disabled={!pdf}
         >
@@ -367,24 +436,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
             <path d="M9 3v18" />
             <path d="M3 9h18" />
           </svg>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>표제란 설정</span>
-        </button>
-
-        <div style={{ width: 1, height: 20, background: '#eee', margin: '0 4px' }} />
-
-        {/* Maximize Toggle */}
-        <button
-          onClick={() => setIsMaximized(!isMaximized)}
-          style={{ ...iconBtnStyle, color: isMaximized ? '#2563eb' : '#444' }}
-          title={isMaximized ? "원래 크기로" : "전체 화면으로 보기"}
-        >
-          {isMaximized ? (
-            // Collapse Icon
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg>
-          ) : (
-            // Expand Icon
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
-          )}
+          <span style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>표제란 설정</span>
         </button>
       </div>
 
@@ -428,7 +480,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
       <div style={{ ...canvasContainerStyle, position: 'relative' }}>
         <canvas
           ref={canvasRef}
-          style={{ maxWidth: '100%', height: 'auto', display: 'block', margin: '0 auto' }}
+          style={{ display: 'block', margin: '0 auto' }}
         />
         <SelectionOverlay
           isActive={isSelectionMode}
