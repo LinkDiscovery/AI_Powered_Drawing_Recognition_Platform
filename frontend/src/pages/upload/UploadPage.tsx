@@ -1,16 +1,8 @@
-// src/pages/upload/UploadPage.tsx
 import { useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-
 import PdfViewer from '../../components/PdfViewer';
-import Modal from '../../components/common/Modal';
-import LoginForm from '../auth/LoginForm';
-import SignupForm from '../auth/SignupForm';
-
-import '../../index.css';
 
 type Step = 'upload' | 'preview';
-type Status = 'uploading' | 'processing' | 'ready' | 'error';
+type Status = 'idle' | 'uploading' | 'processing' | 'ready' | 'error';
 
 type UploadItem = {
   id: string;
@@ -20,6 +12,7 @@ type UploadItem = {
   status: Status;
   message?: string;
   mime: string;
+  file?: File;
 };
 
 function formatSize(bytes: number) {
@@ -35,377 +28,472 @@ function isSupported(file: File) {
   return okPdf || okImg;
 }
 
+function uid() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
 export default function UploadPage() {
-  // -----------------------------
-  // ✅ Auth modal (쿼리스트링으로 제어)
-  // -----------------------------
-  const [params, setParams] = useSearchParams();
-  const auth = params.get('auth'); // 'login' | 'signup' | null
-  const isAuthOpen = auth === 'login' || auth === 'signup';
-
-  function openLogin() {
-    setParams({ auth: 'login' });
-  }
-  function openSignup() {
-    setParams({ auth: 'signup' });
-  }
-  function closeAuth() {
-    const next = new URLSearchParams(params);
-    next.delete('auth');
-    setParams(next, { replace: true });
-  }
-
-  // (선택) 로그인 여부: token 있으면 로그인 상태로 간주
-  const isLoggedIn = !!localStorage.getItem('access_token');
-  function logout() {
-    localStorage.removeItem('access_token');
-  }
-
-  // -----------------------------
-  // ✅ 기존 Upload UI 상태들
-  // -----------------------------
   const [step, setStep] = useState<Step>('upload');
-  const [projectType, setProjectType] = useState<string>('');
-  const [items, setItems] = useState<UploadItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [items, setItems] = useState<UploadItem[]>([]);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // 실제 File 저장(무거운 객체는 state 대신 ref)
-  const fileMapRef = useRef<Map<string, File>>(new Map());
-  // progress 시뮬레이션 interval 저장
-  const intervalMapRef = useRef<Map<string, number>>(new Map());
+  const hasItems = items.length > 0;
+  const activeItem = useMemo(() => items.find((x) => x.id === selectedId) || items[0], [items, selectedId]);
 
-  const activeItem = useMemo(
-    () => (selectedId ? items.find((x) => x.id === selectedId) ?? null : null),
-    [items, selectedId]
-  );
+  const canGoPreview = useMemo(() => {
+    return items.some((it) => it.status === 'ready' || it.status === 'processing' || it.status === 'uploading');
+  }, [items]);
 
-  const activeFile = useMemo(() => {
-    if (!selectedId) return null;
-    return fileMapRef.current.get(selectedId) ?? null;
-  }, [selectedId]);
-
-  function clearIntervalById(id: string) {
-    const t = intervalMapRef.current.get(id);
-    if (t) {
-      window.clearInterval(t);
-      intervalMapRef.current.delete(id);
-    }
+  function openFilePicker() {
+    inputRef.current?.click();
   }
 
-  function removeItem(id: string) {
-    clearIntervalById(id);
-    fileMapRef.current.delete(id);
-    setItems((prev) => prev.filter((x) => x.id !== id));
+  function addFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
 
-    setSelectedId((prevSelected) => {
-      if (prevSelected !== id) return prevSelected;
+    const next: UploadItem[] = [];
+    for (const file of Array.from(fileList)) {
+      if (!isSupported(file)) {
+        next.push({
+          id: uid(),
+          name: file.name,
+          sizeText: formatSize(file.size),
+          progress: 0,
+          status: 'error',
+          message: '지원하지 않는 파일 형식입니다. (PDF/이미지만 가능)',
+          mime: file.type,
+          file,
+        });
+        continue;
+      }
 
-      const remain = items.filter((x) => x.id !== id);
-      const ready = remain.find((x) => x.status === 'ready')?.id;
-      return ready ?? (remain[0]?.id ?? null);
+      next.push({
+        id: uid(),
+        name: file.name,
+        sizeText: formatSize(file.size),
+        progress: 0,
+        status: 'uploading',
+        message: '업로드 준비 중...',
+        mime: file.type,
+        file,
+      });
+    }
+
+    setItems((prev) => {
+      const merged = [...next, ...prev];
+      // 새로 추가된 첫 번째 파일을 선택
+      if (next.length > 0) setSelectedId(next[0].id);
+      return merged;
+    });
+
+    // ✅ 지금은 더미 업로드/처리 진행률 시뮬레이션
+    // (나중에 API 붙일 때 이 부분 교체)
+    next.forEach((it) => {
+      if (it.status === 'error') return;
+
+      const id = it.id;
+
+      // uploading → processing → ready
+      let p = 0;
+      const timer = window.setInterval(() => {
+        p += 8;
+        setItems((prev) =>
+          prev.map((x) => {
+            if (x.id !== id) return x;
+            const nextP = Math.min(100, p);
+
+            if (nextP < 60) {
+              return { ...x, progress: nextP, status: 'uploading', message: '업로드 중...' };
+            }
+            if (nextP < 95) {
+              return { ...x, progress: nextP, status: 'processing', message: '변환 준비 중...' };
+            }
+            if (nextP >= 100) {
+              return { ...x, progress: 100, status: 'ready', message: 'Ready' };
+            }
+            return { ...x, progress: nextP, status: 'processing', message: '처리 중...' };
+          })
+        );
+
+        if (p >= 100) window.clearInterval(timer);
+      }, 120);
     });
   }
 
-  function resetAll() {
-    for (const id of intervalMapRef.current.keys()) clearIntervalById(id);
-    intervalMapRef.current.clear();
-    fileMapRef.current.clear();
-
-    setItems([]);
-    setSelectedId(null);
-    setStep('upload');
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    addFiles(e.target.files);
+    // 같은 파일 다시 선택 가능하도록 value 초기화
+    e.target.value = '';
   }
 
-  function simulatePipeline(id: string) {
-    clearIntervalById(id);
-
-    const intervalId = window.setInterval(() => {
-      setItems((prev) => {
-        const cur = prev.find((x) => x.id === id);
-        if (!cur) return prev;
-        if (cur.status !== 'uploading') return prev;
-
-        const next = Math.min(100, cur.progress + 7);
-
-        if (next < 100) {
-          return prev.map((x) =>
-            x.id === id ? { ...x, progress: next, message: 'Uploading...' } : x
-          );
-        }
-
-        window.setTimeout(() => clearIntervalById(id), 0);
-
-        window.setTimeout(() => {
-          setItems((p) =>
-            p.map((x) =>
-              x.id === id && x.status === 'processing'
-                ? { ...x, status: 'ready', message: 'Ready to preview.' }
-                : x
-            )
-          );
-          setSelectedId((prevSelected) => prevSelected ?? id);
-        }, 900);
-
-        return prev.map((x) =>
-          x.id === id
-            ? {
-                ...x,
-                progress: 100,
-                status: 'processing',
-                message: 'Rendering pages in background...',
-              }
-            : x
-        );
-      });
-    }, 120);
-
-    intervalMapRef.current.set(id, intervalId);
-  }
-
-  function addFiles(fileList: File[]) {
-    if (fileList.length === 0) return;
-
-    const newItems: UploadItem[] = [];
-
-    for (const f of fileList) {
-      const id = crypto.randomUUID();
-      fileMapRef.current.set(id, f);
-
-      const base: UploadItem = {
-        id,
-        name: f.name,
-        sizeText: formatSize(f.size),
-        progress: 0,
-        status: 'uploading',
-        message: 'Uploading...',
-        mime: f.type,
-      };
-
-      if (!isSupported(f)) {
-        newItems.push({ ...base, status: 'error', message: 'Error: Unsupported file format.' });
-      } else {
-        newItems.push(base);
-      }
-    }
-
-    setItems((prev) => [...prev, ...newItems]);
-    setSelectedId((prev) => prev ?? (newItems[0]?.id ?? null));
-
-    for (const it of newItems) {
-      if (it.status !== 'error') simulatePipeline(it.id);
-    }
-  }
-
-  function onPickFiles(files: FileList | null) {
-    if (!files) return;
-    addFiles(Array.from(files));
-  }
-
-  function onDropFiles(e: React.DragEvent<HTMLDivElement>) {
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (!files || files.length === 0) return;
-    addFiles(Array.from(files));
+    addFiles(e.dataTransfer.files);
   }
 
-  function retry(id: string) {
-    const f = fileMapRef.current.get(id);
-    if (!f) return;
-
-    if (!isSupported(f)) {
-      setItems((prev) =>
-        prev.map((x) =>
-          x.id === id ? { ...x, status: 'error', message: 'Error: Unsupported file format.' } : x
-        )
-      );
-      return;
-    }
-
-    setItems((prev) =>
-      prev.map((x) =>
-        x.id === id ? { ...x, progress: 0, status: 'uploading', message: 'Uploading...' } : x
-      )
-    );
-
-    simulatePipeline(id);
+  function onDragOver(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
   }
 
-  const canNext =
-    !!activeItem && activeItem.status === 'ready' && !!activeFile && isSupported(activeFile);
-
-  const imageUrl = useMemo(() => {
-    if (!activeFile) return '';
-    if (!activeFile.type.startsWith('image/')) return '';
-    return URL.createObjectURL(activeFile);
-  }, [activeFile]);
+  function removeItem(id: string) {
+    setItems((prev) => prev.filter((x) => x.id !== id));
+    if (selectedId === id) setSelectedId(null);
+  }
 
   return (
-    <div className="page">
-      {/* ✅ 로그인/회원가입 모달 */}
-      <Modal
-        open={isAuthOpen}
-        title={auth === 'signup' ? '무료체험 시작(회원가입)' : '로그인'}
-        onClose={closeAuth}
-      >
-        {auth === 'signup' ? <SignupForm /> : <LoginForm />}
-      </Modal>
-
-      {/* (옵션) 헤더를 UploadPage에서 완전히 없애면, 로그인 버튼이 사라지니까
-          헤더는 App/Layout에서 넣고, 여기서는 auth modal만 유지해도 됨.
-          단, modal을 열 버튼은 헤더 쪽에서 openLogin/openSignup를 호출할 수 없으니
-          "URL로 auth=login/signup" 방식으로 열도록 헤더에서 링크를 걸면 됨.
-      */}
-      {/* 예: 헤더 버튼이 "/?auth=login" "/?auth=signup" 로 이동하게 만들면 끝 */}
-
-      <div className="pageTitle">File Input Screen</div>
-
-      <div className="card">
-        <div className="cardHeader">
-          <div>
-            <div className="cardTitle">Upload New Document</div>
-            <div className="cardSub">Upload PDF or images to start processing.</div>
-          </div>
-
-          <div className="rightTools">
-            <select className="select" value={projectType} onChange={(e) => setProjectType(e.target.value)}>
-              <option value="">Select Project/Doc Type (Optional)</option>
-              <option value="invoice">Invoice</option>
-              <option value="report">Report</option>
-              <option value="drawing">Drawing</option>
-              <option value="etc">ETC</option>
-            </select>
-          </div>
+    <main style={styles.page}>
+      <div style={styles.container}>
+        {/* ✅ 상단 제목/설명(노란 헤더 아래 흰 영역) */}
+        <div style={{ ...styles.hero, textAlign: 'center' }}>
+          <h1 style={styles.h1}>PDF 변환 프로그램</h1>
+          <p style={styles.p}>
+            AI 도면 분석 및 변환 플랫폼 - 도면을 업로드하고 분석을 시작하세요.
+          </p>
         </div>
 
-        {step === 'upload' && (
+        {/* ✅ 업로드 드롭존 */}
+        {step === 'upload' ? (
           <>
-            <div className="dropzone" onDragOver={(e) => e.preventDefault()} onDrop={onDropFiles}>
-              <div className="cloud">☁</div>
-              <div className="dzText">Drag and drop files here or click to browse</div>
-              <div className="dzSub">Supported: PDF, JPG, PNG. Max size 50MB.</div>
+            <div
+              style={styles.dropzone}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              role="button"
+              tabIndex={0}
+              onClick={openFilePicker}
+            >
+              <input
+                ref={inputRef}
+                type="file"
+                accept="application/pdf,image/*"
+                multiple
+                onChange={onInputChange}
+                style={{ display: 'none' }}
+              />
 
-              <label className="browseBtn">
-                Browse
-                <input
-                  type="file"
-                  accept="application/pdf,image/*"
-                  multiple
-                  onChange={(e) => onPickFiles(e.target.files)}
-                  style={{ display: 'none' }}
-                />
-              </label>
-            </div>
-
-            {items.length > 0 && (
-              <div className="fileList">
-                {items.map((it) => (
-                  <div
-                    key={it.id}
-                    className="fileRow"
-                    style={{
-                      marginBottom: 10,
-                      outline: it.id === selectedId ? '2px solid #0800ff61' : 'none',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => setSelectedId(it.id)}
-                    title="클릭하면 Preview 대상으로 선택됩니다."
-                  >
-                    <div className="fileIcon">{it.mime === 'application/pdf' ? '📄' : '🖼️'}</div>
-
-                    <div className="fileMeta">
-                      <div className="fileName">{it.name}</div>
-
-                      <div className="fileSub">
-                        {it.sizeText}
-                        <span className="dot">·</span>
-                        <span className={`badge ${it.status}`}>
-                          {it.status === 'uploading' && 'Uploading'}
-                          {it.status === 'processing' && 'Processing'}
-                          {it.status === 'ready' && 'Ready'}
-                          {it.status === 'error' && 'Error'}
-                        </span>
-
-                        {it.message && (
-                          <>
-                            <span className="dot">·</span>
-                            <span className="muted">{it.message}</span>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="progressWrap">
-                        <div className="progressBar">
-                          <div className="progressFill" style={{ width: `${it.progress}%` }} />
-                        </div>
-                        <div className="progressText">{it.progress}%</div>
-                      </div>
-                    </div>
-
-                    <div className="fileActions" onClick={(e) => e.stopPropagation()}>
-                      <button className="btn" onClick={() => retry(it.id)}>
-                        Retry
-                      </button>
-                      <button className="btn" onClick={() => removeItem(it.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="bottomBar">
-              <button className="btn" disabled>
-                Previous
-              </button>
-
-              <div className="bottomRight">
-                <button className="btn" onClick={resetAll} disabled={items.length === 0}>
-                  Clear All
-                </button>
-
-                <button
-                  className="btn primary"
-                  onClick={() => setStep('preview')}
-                  disabled={!canNext}
-                  title={!canNext ? 'Ready 상태의 파일을 선택해야 미리보기 가능합니다.' : ''}
-                >
-                  Next (Preview)
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {step === 'preview' && (
-          <>
-            <div className="previewHeader">
-              <button className="btn" onClick={() => setStep('upload')}>
-                ◀ Back
-              </button>
-
-              <div className="previewTitle">Preview</div>
-              <div className="spacer" />
-
-              <button className="btn" onClick={resetAll}>
-                New Document
-              </button>
-            </div>
-
-            <div className="previewBody">
-              {!activeFile && <div style={{ fontSize: 12, color: '#666' }}>선택된 파일이 없습니다.</div>}
-
-              {activeFile?.type === 'application/pdf' && <PdfViewer file={activeFile} />}
-
-              {activeFile && activeFile.type.startsWith('image/') && (
-                <div className="imagePreview">
-                  <img src={imageUrl} alt="preview" style={{ maxWidth: '100%', borderRadius: 10 }} />
+              <div style={styles.dropInner}>
+                <div style={styles.dropIcon}>📄</div>
+                <div style={styles.dropText}>
+                  <div style={styles.dropTitle}>파일을 여기에 끌어다 놓으세요</div>
+                  <div style={styles.dropSub}>또는 클릭해서 파일을 선택하세요 (PDF/이미지)</div>
                 </div>
-              )}
+
+                <button type="button" style={styles.primaryBtn} onClick={(e) => { e.stopPropagation(); openFilePicker(); }}>
+                  파일 선택
+                </button>
+              </div>
             </div>
+
+            {/* ✅ 업로드 리스트 */}
+            {hasItems ? (
+              <section style={styles.list}>
+                <div style={styles.listHeader}>
+                  <div style={styles.listTitle}>업로드 목록</div>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.primaryBtn, opacity: canGoPreview ? 1 : 0.5, cursor: canGoPreview ? 'pointer' : 'not-allowed' }}
+                    disabled={!canGoPreview}
+                    onClick={() => {
+                      // 미리보기 진입 시 첫 번째 파일 자동 선택(없으면)
+                      if (!selectedId && items.length > 0) setSelectedId(items[0].id);
+                      setStep('preview');
+                    }}
+                  >
+                    미리보기로
+                  </button>
+                </div>
+
+                <ul style={styles.ul}>
+                  {items.map((it) => (
+                    <li key={it.id} style={styles.row}>
+                      <div style={styles.rowLeft}>
+                        <div style={styles.fileIcon}>{it.mime === 'application/pdf' ? '📄' : '🖼️'}</div>
+                        <div>
+                          <div style={styles.fileName}>{it.name}</div>
+                          <div style={styles.fileMeta}>
+                            {it.sizeText} <span style={styles.dot}>·</span> <b>{it.status}</b>
+                            {it.message ? (
+                              <>
+                                <span style={styles.dot}>·</span> <span style={styles.muted}>{it.message}</span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={styles.rowRight}>
+                        <div style={styles.progressWrap}>
+                          <div style={{ ...styles.progressBar, width: `${it.progress}%` }} />
+                        </div>
+                        <button type="button" style={styles.ghostBtn} onClick={() => removeItem(it.id)}>
+                          삭제
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </>
+        ) : (
+          /* ✅ preview step */
+          <section style={styles.preview}>
+            <div style={styles.previewHeader}>
+              <div>
+                <div style={styles.listTitle}>미리보기</div>
+                <div style={styles.muted}>{activeItem ? activeItem.name : '선택된 파일 없음'}</div>
+              </div>
+
+              <button type="button" style={styles.ghostBtn} onClick={() => setStep('upload')}>
+                업로드로 돌아가기
+              </button>
+            </div>
+
+            <div style={styles.previewBody}>
+              <div style={{ ...styles.previewBox, display: 'block', padding: 10 }}>
+                {activeItem?.file ? (
+                  <PdfViewer file={activeItem.file} />
+                ) : (
+                  <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
+                    [PDF/이미지 미리보기 영역] - 파일이 없습니다
+                  </div>
+                )}
+              </div>
+
+              {/* 우측 사이드바: 파일 목록 선택 */}
+              <div style={styles.previewSidebar}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>파일 목록</div>
+                <ul style={styles.sideList}>
+                  {items.map(it => (
+                    <li
+                      key={it.id}
+                      style={{
+                        ...styles.sideItem,
+                        background: selectedId === it.id ? '#f3f4f6' : 'transparent',
+                        borderColor: selectedId === it.id ? '#1a73e8' : 'transparent',
+                      }}
+                      onClick={() => setSelectedId(it.id)}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {it.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#666' }}>{it.status}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
         )}
       </div>
-    </div>
+    </main>
   );
 }
+
+/** ✅ 임시 인라인 스타일 (나중에 css/tailwind로 교체하면 됨) */
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    background: '#f6f7f9',
+    minHeight: 'calc(100vh - 60px)',
+    padding: '24px 12px',
+  },
+  container: {
+    maxWidth: 980,
+    margin: '0 auto',
+  },
+  hero: {
+    marginBottom: 16,
+  },
+  h1: {
+    margin: 0,
+    fontSize: 28,
+    fontWeight: 900,
+  },
+  p: {
+    margin: '8px 0 0',
+    color: '#444',
+  },
+
+  dropzone: {
+    border: '2px dashed #cbd5e1',
+    borderRadius: 16,
+    background: '#fff',
+    padding: 18,
+    cursor: 'pointer',
+  },
+  dropInner: {
+    display: 'flex',
+    gap: 14,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+  },
+  dropIcon: {
+    fontSize: 28,
+  },
+  dropText: {
+    flex: 1,
+    minWidth: 240,
+  },
+  dropTitle: {
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  dropSub: {
+    marginTop: 4,
+    color: '#64748b',
+    fontSize: 13,
+  },
+
+  primaryBtn: {
+    border: 0,
+    borderRadius: 12,
+    padding: '10px 14px',
+    fontWeight: 800,
+    background: '#111827',
+    color: '#fff',
+  },
+  ghostBtn: {
+    border: '1px solid #cbd5e1',
+    borderRadius: 12,
+    padding: '8px 12px',
+    background: '#fff',
+    fontWeight: 800,
+  },
+
+  list: {
+    marginTop: 16,
+    background: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    border: '1px solid #e5e7eb',
+  },
+  listHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 10,
+  },
+  listTitle: {
+    fontWeight: 900,
+    fontSize: 16,
+  },
+  ul: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'grid',
+    gap: 10,
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: 12,
+    border: '1px solid #eef2f7',
+    borderRadius: 14,
+  },
+  rowLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 0,
+  },
+  fileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    display: 'grid',
+    placeItems: 'center',
+    background: '#f1f5f9',
+    flex: '0 0 auto',
+  },
+  fileName: {
+    fontWeight: 900,
+    maxWidth: 520,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  fileMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#475569',
+  },
+  dot: {
+    margin: '0 6px',
+    color: '#94a3b8',
+  },
+  muted: {
+    color: '#64748b',
+  },
+  rowRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flex: '0 0 auto',
+  },
+  progressWrap: {
+    width: 160,
+    height: 10,
+    background: '#eef2f7',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    background: '#22c55e',
+    width: '0%',
+  },
+
+  preview: {
+    background: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    border: '1px solid #e5e7eb',
+  },
+  previewHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  previewBody: {
+    display: 'grid',
+    gridTemplateColumns: '2fr 1fr',
+    gap: 12,
+  },
+  previewBox: {
+    border: '1px solid #eef2f7',
+    borderRadius: 16,
+    minHeight: 360,
+    display: 'grid',
+    placeItems: 'center',
+    color: '#64748b',
+  },
+  previewSidebar: {
+    border: '1px solid #eef2f7',
+    borderRadius: 16,
+    padding: 12,
+    background: '#fafafa',
+  },
+  sideList: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  sideItem: {
+    padding: '8px 10px',
+    borderRadius: 8,
+    cursor: 'pointer',
+    border: '1px solid transparent',
+  }
+};

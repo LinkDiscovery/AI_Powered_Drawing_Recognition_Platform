@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import Modal from './Modal';
-import LoginForm from '../../pages/auth/LoginForm';
-import SignupForm from '../../pages/auth/SignupForm';
+import LoginForm from './LoginForm';
+import SignupForm from './SignupForm';
 
 export default function TopBar() {
   const [params, setParams] = useSearchParams();

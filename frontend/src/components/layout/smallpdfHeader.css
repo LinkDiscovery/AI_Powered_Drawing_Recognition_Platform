@@ -1,0 +1,345 @@
+/* ✅ 노란 영역(헤더)만 먼저 */
+.sp-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: #fff;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.sp-header__inner {
+  /* max-width 제거 -> 전체 폭 사용 */
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 8px;
+  /* 좌우 여백 조금 더 줌 */
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* LEFT */
+.sp-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.sp-brand__link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.sp-brand__logos {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-logo {
+  display: none;
+  /* 기본은 숨김, 아래 show-xxx로 켬 */
+}
+
+/* display rules */
+.d-always {
+  display: inline-block;
+}
+
+.show-desktop {
+  display: inline-block;
+}
+
+.show-tablet {
+  display: inline-block;
+}
+
+.show-mobile {
+  display: inline-block;
+}
+
+/* CENTER */
+.sp-nav {
+  flex: 1;
+  min-width: 0;
+}
+
+.sp-nav__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.sp-tab {
+  font-size: 15px;
+  color: #222;
+  text-decoration: none;
+  padding: 8px 6px;
+  border-radius: 8px;
+}
+
+.sp-tab:hover {
+  background: #f5f5f5;
+}
+
+.sp-tab.is-active {
+  color: #111;
+  font-weight: 700;
+  position: relative;
+}
+
+.sp-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -10px;
+  height: 2px;
+  background: #1a73e8;
+  border-radius: 999px;
+}
+
+/* Tools dropdown */
+.sp-tools {
+  position: relative;
+}
+
+.sp-tools__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: #111;
+}
+
+.sp-tools__trigger:hover {
+  background: #f5f5f5;
+}
+
+/* Fixed alignment for icons in trigger */
+.sp-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sp-tools__label {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  /* Tighten line height to center better with icons */
+  padding-top: 1px;
+  /* Optical adjustment if needed */
+}
+
+.sp-tools__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: 760px;
+  max-width: min(760px, 90vw);
+  background: #fff;
+  border: 1px solid #eaeaea;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 14px;
+}
+
+.sp-tools__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.sp-tools__title {
+  font-weight: 800;
+  font-size: 13px;
+  margin: 4px 0 8px;
+  color: #333;
+}
+
+.sp-tools__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.sp-tools__link {
+  display: block;
+  text-decoration: none;
+  color: #222;
+  font-size: 13px;
+  padding: 7px 8px;
+  border-radius: 10px;
+}
+
+.sp-tools__link:hover {
+  background: #f5f5f5;
+}
+
+/* RIGHT */
+.sp-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sp-right__links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sp-right__link {
+  text-decoration: none;
+  color: #222;
+  font-size: 14px;
+  padding: 8px 6px;
+  border-radius: 8px;
+}
+
+.sp-right__link:hover {
+  background: #f5f5f5;
+}
+
+.sp-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sp-btn--ghost {
+  background: transparent;
+  color: #222;
+}
+
+.sp-btn--ghost:hover {
+  background: #f5f5f5;
+}
+
+.sp-btn--primary {
+  background: #1a73e8;
+  color: #fff;
+}
+
+.sp-btn--primary:hover {
+  filter: brightness(0.95);
+}
+
+/* Mobile hamburger */
+.sp-hamburger {
+  display: none;
+  width: 42px;
+  height: 38px;
+  border: 1px solid #eaeaea;
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.sp-hamburger span {
+  display: block;
+  height: 2px;
+  background: #222;
+  margin: 5px 0;
+  border-radius: 999px;
+}
+
+/* ✅ 반응형: Smallpdf처럼 모바일에서 탭/우측링크 줄이고 햄버거 보이기 */
+
+/* Custom responsive hiding classes */
+@media (max-width: 1100px) {
+  .hide-below-1100 {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .hide-below-1000 {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .hide-below-900 {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .hide-below-800 {
+    display: none;
+  }
+}
+
+/* Prevent text breaking */
+.sp-tab,
+.sp-tools__trigger,
+.sp-right__link {
+  white-space: nowrap;
+}
+
+/* Ensure flex items don't shrink too much */
+.sp-brand,
+.sp-nav__item,
+.sp-right__links>li {
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .sp-tools__panel {
+    width: 90vw;
+  }
+
+  .sp-tools__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .sp-nav {
+    display: none;
+  }
+
+  .sp-right__links {
+    display: none;
+  }
+
+  .sp-hamburger {
+    display: inline-block;
+  }
+
+  /* 로고 변형: desktop/tablet 숨기고 mobile만 보이게 하고 싶으면 여기서 조정 */
+  .show-desktop,
+  .show-tablet {
+    display: none;
+  }
+
+  .show-mobile {
+    display: inline-block;
+  }
+}

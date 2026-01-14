@@ -22,10 +22,19 @@ body {
 
 .page {
   max-width: 980px;
-  margin: 10px auto 22px;  /* 위쪽만 줄임 */
+  margin: 10px auto 22px;
+  /* 위쪽만 줄임 */
   padding: 0 16px;
   display: grid;
   gap: 10px;
+}
+
+/* ✅ #root 가로폭 제한 해제 (전체 화면 사용) */
+#root {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
 }
 
 .pageTitle {
@@ -128,7 +137,8 @@ body {
   padding: 10px;
   border: 2px solid #2563eb;
   border-radius: 10px;
-  background: #eff6ff; /* ✅ 연한 파란색으로 */
+  background: #eff6ff;
+  /* ✅ 연한 파란색으로 */
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
@@ -182,16 +192,19 @@ body {
   border-color: #fed7aa;
   color: #9a3412;
 }
+
 .badge.processing {
   background: #eff6ff;
   border-color: #bfdbfe;
   color: #1d4ed8;
 }
+
 .badge.ready {
   background: #ecfdf5;
   border-color: #a7f3d0;
   color: #065f46;
 }
+
 .badge.error {
   background: #fef2f2;
   border-color: #fecaca;
@@ -314,13 +327,17 @@ body {
   padding: 10px;
   overflow: auto;
 }
+
 .fileRow {
-  position: relative; /* 선택 바를 위해 */
+  position: relative;
+  /* 선택 바를 위해 */
 }
 
 .fileRow.selected {
-  border: 2px solid #2563eb;   /* 진한 파란 테두리 */
-  background: #026bf5;         /* 연한 파란 배경 */
+  border: 2px solid #2563eb;
+  /* 진한 파란 테두리 */
+  background: #026bf5;
+  /* 연한 파란 배경 */
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
 }
 
@@ -332,8 +349,10 @@ body {
   bottom: 8px;
   width: 6px;
   border-radius: 8px;
-  background: #2563eb;         /* 왼쪽 액센트 바 */
+  background: #2563eb;
+  /* 왼쪽 액센트 바 */
 }
+
 /* ✅ TopBar: 화면 전체 폭 */
 .topbarOuter {
   width: 100%;
@@ -376,7 +395,8 @@ body {
   inset: 0;
   background: white;
   display: grid;
-  grid-template-columns: 1fr 420px; /* 우측 패널 폭 */
+  grid-template-columns: 1fr 420px;
+  /* 우측 패널 폭 */
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -391,6 +411,7 @@ body {
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -491,9 +512,11 @@ body {
   .authModalShell {
     grid-template-columns: 1fr;
   }
+
   .authModalRight {
     display: none;
   }
+
   .authModalBody {
     max-width: 100%;
   }
@@ -508,9 +531,10 @@ body {
   background: white;
   border-radius: 14px;
   border: 1px solid #e5e7eb;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
   overflow: hidden;
 }
+
 .centerModalHeader {
   padding: 12px 14px;
   display: flex;
@@ -518,7 +542,11 @@ body {
   justify-content: space-between;
   border-bottom: 1px solid #e5e7eb;
 }
-.centerModalTitle { font-weight: 800; }
+
+.centerModalTitle {
+  font-weight: 800;
+}
+
 .centerModalClose {
   width: 36px;
   height: 36px;
@@ -527,7 +555,11 @@ body {
   background: white;
   cursor: pointer;
 }
-.centerModalBody { padding: 14px; }
+
+.centerModalBody {
+  padding: 14px;
+}
+
 /* =========================
    AUTH MODAL (Smallpdf-like)
    ========================= */
@@ -536,7 +568,8 @@ body {
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: #f3f4f6; /* 전체 회색 */
+  background: #f3f4f6;
+  /* 전체 회색 */
   z-index: 9999;
 }
 
@@ -555,7 +588,8 @@ body {
   box-shadow: -10px 0 28px rgba(0, 0, 0, 0.16);
 
   display: grid;
-  grid-template-columns: 1fr 420px; /* 좌(폼) / 우(혜택) */
+  grid-template-columns: 1fr 420px;
+  /* 좌(폼) / 우(혜택) */
 }
 
 /* ✅ 슬라이드 인 애니메이션 */
@@ -568,6 +602,7 @@ body {
     transform: translateX(24px);
     opacity: 0.6;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -591,7 +626,8 @@ body {
 /* ✅ 좌측(폼) : 가운데 정렬 */
 .authModalLeft {
   display: grid;
-  place-items: center; /* 폼 영역 가운데 */
+  place-items: center;
+  /* 폼 영역 가운데 */
   padding: 24px;
 }
 
@@ -671,13 +707,16 @@ body {
 /* ✅ 반응형: 모바일에서는 왼쪽 틈 줄이고 우측 패널 숨김 */
 @media (max-width: 900px) {
   .authModalShell {
-    left: 12px;              /* 모바일은 틈 작게 */
+    left: 12px;
+    /* 모바일은 틈 작게 */
     grid-template-columns: 1fr;
   }
+
   .authModalRight {
     display: none;
   }
 }
+
 /* =========================
    Smallpdf 스타일 Auth Modal
    ========================= */
@@ -686,7 +725,8 @@ body {
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: #d1d5db; /* 짙은 회색(불투명) */
+  background: #d1d5db;
+  /* 짙은 회색(불투명) */
   z-index: 9999;
 }
 
@@ -712,11 +752,13 @@ body {
 .authModalEnter {
   animation: authSlideIn 240ms ease-out both;
 }
+
 @keyframes authSlideIn {
   from {
     transform: translateX(24px);
     opacity: 0.6;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -742,7 +784,8 @@ body {
 .authModalLeft {
   flex: 1;
   padding: 34px 48px;
-  overflow: auto; /* 폼 길면 스크롤 */
+  overflow: auto;
+  /* 폼 길면 스크롤 */
   min-width: 520px;
 }
 
@@ -763,7 +806,8 @@ body {
 
 /* 폼 컨텐츠 영역: 가운데 정렬 느낌 + 넓게 */
 .authModalBody {
-  max-width: 520px; /* ✅ 입력칸 넓게 */
+  max-width: 520px;
+  /* ✅ 입력칸 넓게 */
 }
 
 /* 우측 혜택 패널 */
@@ -772,7 +816,8 @@ body {
   background: #05204f;
   color: #fff;
   padding: 34px 28px;
-  overflow: auto; /* ✅ 혜택 길면 여기서 스크롤(짤림 방지) */
+  overflow: auto;
+  /* ✅ 혜택 길면 여기서 스크롤(짤림 방지) */
 }
 
 .authSideBadge {
@@ -837,16 +882,19 @@ body {
   cursor: pointer;
   font-weight: 700;
 }
+
 .socialBtn.google {
   background: #4285f4;
   border-color: #4285f4;
   color: #fff;
 }
+
 .socialBtn.kakao {
   background: #fee500;
   border-color: #fee500;
   color: #111;
 }
+
 .socialBtn.ms {
   background: #111827;
   border-color: #111827;
@@ -861,6 +909,7 @@ body {
   color: #9ca3af;
   font-size: 13px;
 }
+
 .orLine::before,
 .orLine::after {
   content: "";
@@ -889,8 +938,10 @@ body {
 .authInput::placeholder {
   color: #9ca3af;
 }
+
 .authInput:focus::placeholder {
-  opacity: 0; /* ✅ 포커스 시 placeholder 숨김 */
+  opacity: 0;
+  /* ✅ 포커스 시 placeholder 숨김 */
 }
 
 /* ✅ 좁은 화면에서는 우측 패널 숨겨서 "오른쪽 짤림" 제거 */
@@ -898,17 +949,21 @@ body {
   .authModalShell {
     width: calc(100vw - 16px);
   }
+
   .authModalRight {
     display: none;
   }
+
   .authModalLeft {
     min-width: 0;
     padding: 28px 22px;
   }
+
   .authModalBody {
     max-width: 100%;
   }
 }
+
 /* =========================
    ✅ TopBar: 화면 전체 폭
 ========================= */
@@ -950,7 +1005,8 @@ body {
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: #d1d5db; /* 짙은 회색, 반투명 X */
+  background: #d1d5db;
+  /* 짙은 회색, 반투명 X */
   z-index: 9999;
 }
 
@@ -980,6 +1036,7 @@ body {
     transform: translateX(24px);
     opacity: 0.6;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1012,7 +1069,8 @@ body {
 
   display: flex;
   flex-direction: column;
-  align-items: center; /* 폼 전체를 가운데로 */
+  align-items: center;
+  /* 폼 전체를 가운데로 */
 }
 
 /* ✅ 브랜드는 좌측 정렬 */
@@ -1020,7 +1078,8 @@ body {
   font-weight: 900;
   font-size: 22px;
   text-align: left;
-  align-self: flex-start; /* ✅ 좌측 */
+  align-self: flex-start;
+  /* ✅ 좌측 */
   margin-bottom: 22px;
 }
 
@@ -1034,7 +1093,8 @@ body {
 
 /* 폼 영역 폭 */
 .authModalBody {
-  width: min(520px, 100%); /* ✅ 넓게 + 가운데 */
+  width: min(520px, 100%);
+  /* ✅ 넓게 + 가운데 */
 }
 
 /* ✅ 우측(혜택 패널) */
@@ -1044,7 +1104,8 @@ body {
   color: #fff;
   padding: 34px 28px;
 
-  overflow: auto; /* ✅ 내용 길면 여기서 스크롤 */
+  overflow: auto;
+  /* ✅ 내용 길면 여기서 스크롤 */
 }
 
 .authSideBadge {
@@ -1175,11 +1236,12 @@ body {
   .authModalShell {
     left: 16px;
   }
+
   .authModalRight {
     display: none;
   }
+
   .authModalLeft {
     padding: 28px 22px;
   }
 }
-
