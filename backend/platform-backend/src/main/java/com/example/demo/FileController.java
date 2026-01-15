@@ -109,6 +109,85 @@ public class FileController {
         }
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/api/files/{id}/download")
+    public ResponseEntity<?> downloadFile(@org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            String jwt = token.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+            com.example.demo.model.User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            com.example.demo.model.UserFile file = userFileRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
+
+            if (!user.getId().equals(file.getUserId())) {
+                return ResponseEntity.status(403).body("Forbidden");
+            }
+
+            Path path = Paths.get(file.getFilePath());
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(path.toUri());
+
+            if (resource.exists() || resource.isReadable()) {
+                String contentType = Files.probeContentType(path);
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                                "inline; filename=\"" + file.getFileName() + "\"")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+        }
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/api/files/{id}")
+    public ResponseEntity<?> deleteFile(@org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            String jwt = token.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+            com.example.demo.model.User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            com.example.demo.model.UserFile file = userFileRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
+
+            if (!user.getId().equals(file.getUserId())) {
+                return ResponseEntity.status(403).body("Forbidden");
+            }
+
+            // Delete from DB
+            userFileRepository.delete(file);
+
+            // Delete from Filesystem (Optional, but good practice)
+            try {
+                Path path = Paths.get(file.getFilePath());
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+                // Log error but prioritize DB consistency
+                System.err.println("Failed to delete file from disk: " + e.getMessage());
+            }
+
+            return ResponseEntity.ok("Deleted");
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+        }
+    }
+
     @org.springframework.web.bind.annotation.GetMapping("/api/user/files")
     public ResponseEntity<?> getUserFiles(
             @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {

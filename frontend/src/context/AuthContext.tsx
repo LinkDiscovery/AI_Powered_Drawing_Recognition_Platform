@@ -66,6 +66,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    // Check for token expiration
+    useEffect(() => {
+        if (!expiresAt || !user) return;
+
+        const checkExpiration = () => {
+            // Buffer of 1 second to be safe
+            if (Date.now() >= expiresAt * 1000) {
+                // Token expired
+                logout();
+                alert("로그아웃 되셨습니다.");
+                window.location.reload();
+            }
+        };
+
+        const interval = setInterval(checkExpiration, 1000);
+        return () => clearInterval(interval);
+    }, [expiresAt, user]);
+
     const login = async (email: string, password?: string) => {
         try {
             const response = await fetch('http://localhost:8080/api/auth/login', {
