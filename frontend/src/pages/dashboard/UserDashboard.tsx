@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import PdfViewer from '../../components/PdfViewer';
+import { useToast } from '../../context/ToastContext';
+import { useFiles } from '../../context/FileContext';
 
 interface UserFile {
     id: number;
     fileName: string;
     fileSize: number;
     uploadTime: string;
+    titleX?: number;
+    titleY?: number;
+    titleWidth?: number;
+    titleHeight?: number;
 }
 
 export default function UserDashboard() {
     const { user, isAuthenticated, token } = useAuth();
     const navigate = useNavigate();
+    const { showToast } = useToast();
     const [fileList, setFileList] = useState<UserFile[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Preview State
-    const [previewFile, setPreviewFile] = useState<File | null>(null);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [loadingPreview, setLoadingPreview] = useState(false);
 
     useEffect(() => {
@@ -50,6 +53,8 @@ export default function UserDashboard() {
         fetchFiles();
     }, [isAuthenticated, navigate, token]);
 
+    const { openSingleFile } = useFiles();
+
     const handlePreview = async (file: UserFile) => {
         if (!token) return;
         setLoadingPreview(true);
@@ -60,18 +65,42 @@ export default function UserDashboard() {
             if (res.ok) {
                 const blob = await res.blob();
                 const downloadedFile = new File([blob], file.fileName, { type: blob.type });
-                setPreviewFile(downloadedFile);
-                setIsPreviewOpen(true);
+
+                // Prepare initial selection if exists
+                let initialSelection;
+                if (file.titleX !== undefined && file.titleY !== undefined && file.titleWidth !== undefined && file.titleHeight !== undefined) {
+                    initialSelection = {
+                        x: file.titleX,
+                        y: file.titleY,
+                        width: file.titleWidth,
+                        height: file.titleHeight
+                    };
+                }
+
+                // Open in Context and Navigate
+                openSingleFile(downloadedFile, file.id, initialSelection);
+                navigate('/preview');
+
             } else {
-                alert("파일을 불러오는데 실패했습니다.");
+                showToast("파일을 불러오는데 실패했습니다.", 'error');
             }
         } catch (error) {
             console.error(error);
-            alert("오류가 발생했습니다.");
+            showToast("오류가 발생했습니다.", 'error');
         } finally {
             setLoadingPreview(false);
         }
     };
+
+    // handleSaveCoordinates is no longer needed here as it is handled in PreviewPage/PdfViewer interactions
+    // But wait, PreviewPage needs to know how to save.
+    // PreviewPage uses PdfViewer. PdfViewer handles onSave.
+    // Does PreviewPage implement onSave?
+    // Let's check PreviewPage code later. 
+    // Actually, PreviewPage doesn't have onSaveSelection prop on PdfViewer yet?
+    // UserDashboard previously passed `handleSaveCoordinates`.
+    // We should ensure PreviewPage/PdfViewer can handle saving.
+    // For now, removing `handleSaveCoordinates` from here is correct as we are leaving this page.
 
     const handleDelete = async (fileId: number) => {
         if (!token) return;
@@ -84,13 +113,38 @@ export default function UserDashboard() {
             });
             if (res.ok) {
                 setFileList(prev => prev.filter(f => f.id !== fileId));
-                alert("삭제되었습니다.");
+                showToast("삭제되었습니다.", 'success');
             } else {
-                alert("삭제 실패");
+                showToast("삭제 실패", 'error');
             }
         } catch (error) {
             console.error(error);
-            alert("오류가 발생했습니다.");
+            showToast("오류가 발생했습니다.", 'error');
+        }
+    };
+
+    const handleDownload = async (file: UserFile) => {
+        if (!token) return;
+        try {
+            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = file.fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                showToast("다운로드 실패", 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast("오류가 발생했습니다.", 'error');
         }
     };
 
@@ -129,17 +183,38 @@ export default function UserDashboard() {
             </h2>
 
             {loading ? (
-                <p>로딩 중...</p>
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
+                    <div className="spinner" />
+                </div>
             ) : fileList.length === 0 ? (
                 <div style={{
-                    padding: '40px',
+                    padding: '60px 20px',
                     textAlign: 'center',
                     background: '#fff',
                     borderRadius: '8px',
                     border: '1px solid #eee',
-                    color: '#888'
+                    color: '#888',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '16px'
                 }}>
-                    아직 업로드한 파일이 없습니다.
+                    <p>아직 업로드한 파일이 없습니다.</p>
+                    <button
+                        onClick={() => navigate('/upload')}
+                        style={{
+                            padding: '10px 20px',
+                            background: '#e03a3a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 600
+                        }}
+                    >
+                        도면 업로드하러 가기
+                    </button>
                 </div>
             ) : (
                 <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #eee', overflow: 'hidden' }}>
@@ -160,7 +235,7 @@ export default function UserDashboard() {
                                             style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                                             onClick={() => handlePreview(file)}
                                         >
-                                            <span>📄</span>
+                                            <span>{file.fileName.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}</span>
                                             <span style={{ textDecoration: 'underline', color: '#1a73e8' }}>
                                                 {file.fileName}
                                             </span>
@@ -173,6 +248,21 @@ export default function UserDashboard() {
                                         {new Date(file.uploadTime).toLocaleString()}
                                     </td>
                                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                        <button
+                                            onClick={() => handleDownload(file)}
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: '4px',
+                                                border: '1px solid #ddd',
+                                                background: 'white',
+                                                color: '#666',
+                                                cursor: 'pointer',
+                                                fontSize: '12px',
+                                                marginRight: '8px'
+                                            }}
+                                        >
+                                            다운로드
+                                        </button>
                                         <button
                                             onClick={() => handleDelete(file.id)}
                                             style={{
@@ -195,63 +285,7 @@ export default function UserDashboard() {
                 </div>
             )}
 
-            {/* Preview Modal */}
-            {isPreviewOpen && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }} onClick={() => setIsPreviewOpen(false)}>
-                    <div style={{
-                        background: 'white',
-                        width: '90vw',
-                        height: '90vh',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column'
-                    }} onClick={e => e.stopPropagation()}>
-                        <div style={{
-                            padding: '12px 20px',
-                            borderBottom: '1px solid #eee',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}>
-                            <h3 style={{ margin: 0, fontSize: '16px' }}>미리보기: {previewFile?.name}</h3>
-                            <button
-                                onClick={() => setIsPreviewOpen(false)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    fontSize: '24px',
-                                    cursor: 'pointer',
-                                    padding: '0 8px'
-                                }}
-                            >
-                                &times;
-                            </button>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'hidden', padding: '10px', background: '#f0f0f0' }}>
-                            {loadingPreview ? (
-                                <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>로딩 중...</div>
-                            ) : (
-                                <PdfViewer file={previewFile} />
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {loadingPreview && !isPreviewOpen && (
+            {loadingPreview && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
@@ -265,12 +299,17 @@ export default function UserDashboard() {
                     zIndex: 2000
                 }}>
                     <div style={{
-                        padding: '20px',
+                        padding: '24px',
                         background: 'white',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '12px'
                     }}>
-                        파일 불러오는 중...
+                        <div className="spinner" />
+                        <span style={{ color: '#555', fontWeight: 500 }}>파일 불러오는 중...</span>
                     </div>
                 </div>
             )}

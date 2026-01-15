@@ -16,6 +16,7 @@ export type UploadItem = {
     message?: string;
     mime: string;
     file?: File;
+    initialSelection?: { x: number, y: number, width: number, height: number };
 };
 
 // ... (Helper functions unchanged)
@@ -46,6 +47,7 @@ interface FileContextType {
     hasItems: boolean;
     canGoPreview: boolean;
     claimFile: (dbId: number) => Promise<void>;
+    openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }) => void;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -218,6 +220,35 @@ export function FileProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error("Failed to claim file");
     }
 
+    // Open a single file (e.g. from Dashboard)
+    // - Clears existing list
+    // - Adds this file
+    // - Selects it
+    // - Optionally sets DB ID if known (to avoid re-upload if logic allows, but simplistic approach is fine)
+    function openSingleFile(file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }) {
+        if (!isSupported(file)) {
+            alert("지원하지 않는 파일 형식입니다.");
+            return;
+        }
+
+        const id = uid();
+        const newItem: UploadItem = {
+            id,
+            dbId, // If provided, we assume it's already on server
+            name: file.name,
+            sizeText: formatSize(file.size),
+            progress: 100, // Assumed ready if opening from dashboard
+            status: 'ready',
+            message: '불러오기 완료',
+            mime: file.type,
+            file,
+            initialSelection
+        };
+
+        setItems([newItem]);
+        setSelectedId(id);
+    }
+
     const value = {
         items,
         addFiles,
@@ -227,7 +258,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         activeItem,
         hasItems,
         canGoPreview,
-        claimFile
+        claimFile,
+        openSingleFile
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

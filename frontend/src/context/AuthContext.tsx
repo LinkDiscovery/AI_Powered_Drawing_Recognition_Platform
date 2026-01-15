@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { useToast } from './ToastContext';
 
 // User type definition
 export interface User {
@@ -13,6 +15,7 @@ interface AuthContextType {
     login: (email: string, password?: string) => Promise<void>;
     signup: (email: string, name: string, password?: string) => Promise<void>;
     googleAuth: (token: string) => Promise<void>;
+    refreshSession: () => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
     expiresAt: number | null; // Unix timestamp in seconds
@@ -31,9 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const { showToast } = useToast();
 
     const openLoginModal = () => setIsLoginModalOpen(true);
     const closeLoginModal = () => setIsLoginModalOpen(false);
+
+
 
     // Load user from localStorage on mount
     useEffect(() => {
@@ -75,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (Date.now() >= expiresAt * 1000) {
                 // Token expired
                 logout();
-                alert("로그아웃 되셨습니다.");
+                showToast("로그아웃 되셨습니다.", 'info');
                 window.location.reload();
             }
         };
@@ -177,11 +183,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const refreshSession = async () => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (!token) return;
+
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/refresh', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Refresh failed');
+            }
+
+            const data = await response.json();
+            // Update token and expiry, keep user info.
+            if (user && data.token) {
+                saveUser(user, data.token);
+                // Force reload or just alert?
+                showToast("로그인 시간이 갱신되었습니다.", 'success');
+            }
+        } catch (error) {
+            console.error("Session refresh failed", error);
+            showToast("세션 갱신에 실패했습니다. 다시 로그인해주세요.", 'error');
+            logout();
+        }
+    };
+
+    const navigate = useNavigate();
+
     const logout = () => {
         setUser(null);
         setExpiresAt(null);
         localStorage.removeItem(LOCAL_STORAGE_KEY);
         localStorage.removeItem(TOKEN_KEY);
+        navigate('/');
     };
 
     const saveUser = (u: User, token: string) => {
@@ -204,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         signup,
         googleAuth,
+        refreshSession,
         logout,
         isAuthenticated: !!user,
         expiresAt,

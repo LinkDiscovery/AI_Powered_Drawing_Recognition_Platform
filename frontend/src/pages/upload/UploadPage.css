@@ -119,14 +119,14 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    background-color: transparent;
-    /* Transparent to show red bg */
+    background-color: rgba(0, 0, 0, 0.05);
+    /* Default slight dark overlay */
     transition: background-color 0.2s, border-color 0.2s;
 }
 
 .uploader-dropzone:hover,
 .uploader-dropzone--active {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.1);
     border-color: #ffffff;
 }
 

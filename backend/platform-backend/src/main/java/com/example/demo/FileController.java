@@ -139,7 +139,9 @@ public class FileController {
                 return ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
-                                "inline; filename=\"" + file.getFileName() + "\"")
+                                "inline; filename=\"" + java.net.URLEncoder
+                                        .encode(file.getFileName(), java.nio.charset.StandardCharsets.UTF_8)
+                                        .replaceAll("\\+", "%20") + "\"")
                         .body(resource);
             } else {
                 return ResponseEntity.notFound().build();
@@ -200,11 +202,53 @@ public class FileController {
 
                 java.util.List<com.example.demo.model.UserFile> files = userFileRepository
                         .findByUserIdOrderByUploadTimeDesc(user.getId());
+
+                System.out.println("DEBUG: User " + email + " requesting files. Found: " + files.size());
+
                 return ResponseEntity.ok(files);
             }
             return ResponseEntity.status(401).body("Unauthorized");
         } catch (Exception e) {
+            e.printStackTrace(); // Log error trace
             return ResponseEntity.status(401).body("Unauthorized");
+        }
+    }
+
+    @PostMapping("/api/files/{id}/coordinates")
+    public ResponseEntity<?> updateCoordinates(@org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Double> coords,
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            String jwt = token.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+            com.example.demo.model.User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            com.example.demo.model.UserFile file = userFileRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
+
+            if (!user.getId().equals(file.getUserId())) {
+                return ResponseEntity.status(403).body("Forbidden");
+            }
+
+            if (coords.containsKey("x"))
+                file.setTitleX(coords.get("x"));
+            if (coords.containsKey("y"))
+                file.setTitleY(coords.get("y"));
+            if (coords.containsKey("width"))
+                file.setTitleWidth(coords.get("width"));
+            if (coords.containsKey("height"))
+                file.setTitleHeight(coords.get("height"));
+
+            userFileRepository.save(file);
+
+            return ResponseEntity.ok("Coordinates updated");
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }
     }
 }

@@ -1,145 +1,247 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PdfViewer from '../../components/PdfViewer';
 import { useFiles } from '../../context/FileContext';
+import Sidebar from '../../components/layout/Sidebar';
 
 export default function PreviewPage() {
     const navigate = useNavigate();
-    const { items, activeItem, selectedId, setSelectedId, hasItems } = useFiles();
+    const { activeItem, selectedId, hasItems } = useFiles();
+    const [isProcessing, setIsProcessing] = useState(true);
 
     // Redirect if no files
-    React.useEffect(() => {
+    useEffect(() => {
         if (!hasItems) {
             navigate('/upload');
         }
     }, [hasItems, navigate]);
 
+    // Simulate Processing Delay
+    useEffect(() => {
+        if (hasItems) {
+            setIsProcessing(true);
+            const timer = setTimeout(() => {
+                setIsProcessing(false);
+            }, 1800);
+            return () => clearTimeout(timer);
+        }
+    }, [hasItems, selectedId]); // Re-run when file selection changes
+
     if (!hasItems) return null;
 
     return (
-        <main style={styles.page}>
-            <div style={styles.container}>
-                <section style={styles.preview}>
-                    <div style={styles.previewHeader}>
-                        <div>
-                            <div style={styles.listTitle}>미리보기</div>
-                            <div style={styles.muted}>{activeItem ? activeItem.name : '선택된 파일 없음'}</div>
+        <div style={styles.appShell}>
+            {/* Left Sidebar */}
+            <Sidebar />
+
+            <div style={styles.mainArea}>
+                {/* Header (re-use existing header or make simplified version? reusing existing for consistency) */}
+                <div style={styles.headerWrapper}>
+                    {/* We might want to hide the full header here or keep it. 
+                       Smallpdf usually has a simplified header in tool view.
+                       For now, let's keep it simple or use a custom top bar. */}
+                </div>
+
+                {isProcessing ? (
+                    /* Processing Screen */
+                    <div style={styles.processingScreen}>
+                        <div style={styles.processingContent}>
+                            <div style={styles.previewCard}>
+                                <div style={styles.docIcon}>
+                                    📄
+                                </div>
+                                <div style={styles.docLines}>
+                                    <div style={{ ...styles.line, width: '80%' }} />
+                                    <div style={{ ...styles.line, width: '60%' }} />
+                                    <div style={{ ...styles.line, width: '90%' }} />
+                                </div>
+                                {/* Scanning line animation */}
+                                <div className="scan-line" />
+                            </div>
+
+                            <h2 style={styles.procTitle}>{activeItem?.name}</h2>
+                            <p style={styles.procSub}>처리 중...</p>
+
+                            <div className="spinner" style={{ width: 24, height: 24, borderWidth: 3 }} />
+                        </div>
+                    </div>
+                ) : (
+                    /* Main Viewer */
+                    <main style={styles.page}>
+                        <div style={styles.previewHeader}>
+                            <div style={styles.titleInfo}>
+                                <div style={styles.fileIcon}>📄</div>
+                                <div style={{ fontWeight: 700, fontSize: 18 }}>PDF 변환 프로그램</div>
+                                <div style={styles.divider} />
+                                <div style={styles.fileName}>{activeItem?.name}</div>
+                            </div>
+
+                            <div style={styles.actions}>
+                                <button style={styles.actionBtn}>공유</button>
+                                <button style={{ ...styles.actionBtn, background: '#2563eb', color: 'white', borderColor: '#2563eb' }}>다운로드</button>
+                            </div>
                         </div>
 
-                        <button type="button" style={styles.ghostBtn} onClick={() => navigate('/upload')}>
-                            업로드로 돌아가기
-                        </button>
-                    </div>
-
-                    <div style={styles.previewBody}>
-                        <div style={{ ...styles.previewBox, display: 'block', padding: 10 }}>
+                        <div style={styles.viewerContainer}>
                             {activeItem?.file ? (
                                 <PdfViewer file={activeItem.file} />
                             ) : (
-                                <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-                                    [PDF/이미지 미리보기 영역] - 파일이 없습니다
-                                </div>
+                                <div>파일 없음</div>
                             )}
                         </div>
-
-                        {/* 우측 사이드바: 파일 목록 선택 */}
-                        <div style={styles.previewSidebar}>
-                            <div style={{ fontWeight: 700, marginBottom: 10 }}>파일 목록</div>
-                            <ul style={styles.sideList}>
-                                {items.map(it => (
-                                    <li
-                                        key={it.id}
-                                        style={{
-                                            ...styles.sideItem,
-                                            background: selectedId === it.id ? '#f3f4f6' : 'transparent',
-                                            borderColor: selectedId === it.id ? '#1a73e8' : 'transparent',
-                                        }}
-                                        onClick={() => setSelectedId(it.id)}
-                                    >
-                                        <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {it.name}
-                                        </div>
-                                        <div style={{ fontSize: 11, color: '#666' }}>{it.status}</div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </section>
+                    </main>
+                )}
             </div>
-        </main>
+
+            <style>{`
+                .scan-line {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 2px;
+                    background: #2563eb;
+                    box-shadow: 0 0 4px #2563eb;
+                    animation: scan 1.5s linear infinite;
+                }
+                @keyframes scan {
+                    0% { top: 10%; opacity: 0; }
+                    10% { opacity: 1; }
+                    90% { opacity: 1; }
+                    100% { top: 90%; opacity: 0; }
+                }
+            `}</style>
+        </div>
     );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-    page: {
-        background: '#f6f7f9',
-        minHeight: 'calc(100vh - 60px)',
-        padding: '24px 12px',
-    },
-    container: {
-        maxWidth: 1400,
-        margin: '0 auto',
-    },
-    listTitle: {
-        fontWeight: 900,
-        fontSize: 16,
-    },
-    muted: {
-        color: '#64748b',
-    },
-    ghostBtn: {
-        border: '1px solid #cbd5e1',
-        borderRadius: 12,
-        padding: '8px 12px',
-        background: '#fff',
-        fontWeight: 800,
-        cursor: 'pointer',
-    },
-    preview: {
-        background: '#fff',
-        borderRadius: 16,
-        padding: 14,
-        border: '1px solid #e5e7eb',
-    },
-    previewHeader: {
+    appShell: {
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: 12,
-        marginBottom: 12,
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        background: '#f7f9fc'
     },
-    previewBody: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 240px',
-        gap: 12,
-    },
-    previewBox: {
-        border: '1px solid #eef2f7',
-        borderRadius: 16,
-        minHeight: 360,
-        display: 'grid',
-        placeItems: 'center',
-        color: '#64748b',
-    },
-    previewSidebar: {
-        border: '1px solid #eef2f7',
-        borderRadius: 16,
-        padding: 12,
-        background: '#fafafa',
-    },
-    sideList: {
-        listStyle: 'none',
-        padding: 0,
-        margin: 0,
+    mainArea: {
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: 6,
+        position: 'relative'
     },
-    sideItem: {
-        padding: '8px 10px',
+    processingScreen: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f7f9fc'
+    },
+    processingContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 16
+    },
+    previewCard: {
+        width: 140,
+        height: 180,
+        background: 'white',
         borderRadius: 8,
+        boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: 24,
+        overflow: 'hidden',
+        border: '1px solid #e1e5ea'
+    },
+    docIcon: {
+        fontSize: 40,
+        marginBottom: 16
+    },
+    docLines: {
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        alignItems: 'center'
+    },
+    line: {
+        height: 6,
+        background: '#eff2f5',
+        borderRadius: 4
+    },
+    procTitle: {
+        fontSize: 16,
+        fontWeight: 600,
+        color: '#1e293b',
+        marginTop: 10
+    },
+    procSub: {
+        fontSize: 14,
+        color: '#64748b',
+        fontWeight: 500
+    },
+
+    // Viewer Styles
+    page: {
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+    },
+    previewHeader: {
+        height: 60,
+        background: 'white',
+        borderBottom: '1px solid #e1e5ea',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+        flexShrink: 0
+    },
+    titleInfo: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12
+    },
+    fileIcon: {
+        fontSize: 20
+    },
+    divider: {
+        width: 1,
+        height: 16,
+        background: '#e1e5ea'
+    },
+    fileName: {
+        fontSize: 14,
+        color: '#64748b'
+    },
+    actions: {
+        display: 'flex',
+        gap: 10
+    },
+    actionBtn: {
+        height: 36,
+        padding: '0 16px',
+        borderRadius: 6,
+        border: '1px solid #e1e5ea',
+        background: 'white',
+        fontSize: 13,
+        fontWeight: 600,
         cursor: 'pointer',
-        border: '1px solid transparent',
+        display: 'grid',
+        placeItems: 'center'
+    },
+    viewerContainer: {
+        flex: 1,
+        background: '#f0f0f0',
+        padding: 24,
+        overflow: 'hidden',
+        display: 'flex',
+        justifyContent: 'center'
     }
 };
+

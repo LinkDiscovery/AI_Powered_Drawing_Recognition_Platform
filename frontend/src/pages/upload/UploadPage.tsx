@@ -4,14 +4,17 @@ import { useFiles } from '../../context/FileContext';
 import './UploadPage.css';
 
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { items, addFiles, removeItem, hasItems, canGoPreview, selectedId, setSelectedId, claimFile } = useFiles();
+  const { items, addFiles, removeItem, hasItems, selectedId, setSelectedId, claimFile } = useFiles();
   const { isAuthenticated, openLoginModal } = useAuth();
+  const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
+  const [savedDbIds, setSavedDbIds] = useState<Set<number>>(new Set());
 
   function openFilePicker() {
     inputRef.current?.click();
@@ -48,17 +51,18 @@ export default function UploadPage() {
       return;
     }
     if (!item.dbId) {
-      alert("파일이 아직 업로드되지 않았습니다.");
+      showToast("파일이 아직 업로드되지 않았습니다.", 'error');
       return;
     }
 
     try {
       setSavingIds(prev => new Set(prev).add(item.id));
       await claimFile(item.dbId);
-      alert("My Page에 저장되었습니다.");
+      setSavedDbIds(prev => new Set(prev).add(item.dbId));
+      showToast("My Page에 저장되었습니다.", 'success');
     } catch (e) {
       console.error(e);
-      alert("저장 실패");
+      showToast("저장 실패", 'error');
     } finally {
       setSavingIds(prev => {
         const next = new Set(prev);
@@ -70,6 +74,11 @@ export default function UploadPage() {
 
   return (
     <main className="tool-page">
+      {/* ... (breadcrumb/header/banner/droplist) ... */}
+      {/* Note: I need to target the BUTTON rendering in the map loop. */}
+      {/* Since replace_file_content works on contiguous blocks, I have to target the function first then the button separately or together if close. */}
+      {/* They are far apart. I will do function first. */}
+
 
       {/* 0. Breadcrumb */}
       <div className="tool-breadcrumb">
@@ -104,11 +113,26 @@ export default function UploadPage() {
                 {items.map(it => (
                   <li key={it.id} className="uploader-item">
                     <span className="uploader-item__icon">{it.mime.includes('pdf') ? '📄' : '🖼️'}</span>
-                    <span className="uploader-item__name">{it.name}</span>
+                    <span
+                      className="uploader-item__name"
+                      onClick={() => {
+                        setSelectedId(it.id);
+                        navigate('/preview');
+                      }}
+                      style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      {it.name}
+                    </span>
 
                     <button
                       className="btn-save-mypage"
-                      onClick={() => handleSaveToMyPage(it)}
+                      onClick={() => {
+                        if (it.dbId && savedDbIds.has(it.dbId)) {
+                          navigate('/dashboard');
+                        } else {
+                          handleSaveToMyPage(it);
+                        }
+                      }}
                       disabled={savingIds.has(it.id)}
                       style={{
                         marginRight: '12px',
@@ -116,12 +140,14 @@ export default function UploadPage() {
                         fontSize: '12px',
                         borderRadius: '4px',
                         border: '1px solid #ccc',
-                        background: '#fff',
+                        background: (it.dbId && savedDbIds.has(it.dbId)) ? '#e6fffa' : '#fff',
                         cursor: 'pointer',
-                        color: '#333'
+                        color: (it.dbId && savedDbIds.has(it.dbId)) ? '#00796b' : '#333'
                       }}
                     >
-                      {savingIds.has(it.id) ? '저장 중...' : 'My Page에 저장하기'}
+                      {savingIds.has(it.id) ? '저장 중...' :
+                        (it.dbId && savedDbIds.has(it.dbId)) ? 'My Page에서 보기' :
+                          'My Page에 저장하기'}
                     </button>
 
                     <button className="uploader-item__delete" onClick={() => removeItem(it.id)}>×</button>
@@ -132,10 +158,12 @@ export default function UploadPage() {
                 <button className="btn-secondary" onClick={openFilePicker}>+ 도면 추가</button>
                 <button
                   className="btn-primary"
-                  disabled={!canGoPreview}
+                  disabled={items.length === 0}
                   onClick={() => {
-                    if (!selectedId && items.length > 0) setSelectedId(items[0].id);
-                    navigate('/preview');
+                    if (items.length > 0) {
+                      if (!selectedId) setSelectedId(items[0].id);
+                      navigate('/preview');
+                    }
                   }}
                 >
                   AI 분석 시작하기 ➔

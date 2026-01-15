@@ -42,7 +42,7 @@ function TabLink({ item, active }: { item: NavLink; active: boolean }) {
   );
 }
 
-const SessionTimer = ({ expiresAt }: { expiresAt: number | null }) => {
+const SessionTimer = ({ expiresAt, onRefresh }: { expiresAt: number | null, onRefresh: () => void }) => {
   const [timeLeft, setTimeLeft] = useState<string>('');
 
   useEffect(() => {
@@ -72,15 +72,42 @@ const SessionTimer = ({ expiresAt }: { expiresAt: number | null }) => {
   if (!timeLeft) return null;
 
   return (
-    <span style={{
-      fontSize: '13px',
-      color: '#d93025',
-      fontWeight: 'bold',
-      fontVariantNumeric: 'tabular-nums',
-      marginRight: '8px'
-    }}>
-      {timeLeft}
-    </span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 8 }}>
+      <span style={{
+        fontSize: '13px',
+        color: '#d93025',
+        fontWeight: 'bold',
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: '1.2'
+      }}>
+        {timeLeft}
+      </span>
+      <button
+        onClick={onRefresh}
+        style={{
+          marginTop: 2,
+          background: '#f1f3f4',
+          border: 'none',
+          borderRadius: '4px',
+          padding: '2px 6px',
+          color: '#5f6368',
+          fontSize: '10px',
+          cursor: 'pointer',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2
+        }}
+        title="로그인 시간 연장"
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M23 4v6h-6"></path>
+          <path d="M1 20v-6h6"></path>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        연장
+      </button>
+    </div>
   );
 };
 
@@ -88,7 +115,7 @@ export default function SmallpdfHeader() {
   const { pathname } = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false); // User Dropdown State
-  const { user, logout, isAuthenticated, expiresAt, isLoginModalOpen, openLoginModal, closeLoginModal } = useAuth(); // Auth Context
+  const { user, logout, isAuthenticated, expiresAt, isLoginModalOpen, openLoginModal, closeLoginModal, refreshSession } = useAuth(); // Auth Context
 
   // 활성 탭 판정(가장 단순하게: pathname이 href로 시작하면 active)
   const activeTabId = useMemo(() => {
@@ -211,7 +238,7 @@ export default function SmallpdfHeader() {
           <div className="sp-auth">
             {isAuthenticated && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <SessionTimer expiresAt={expiresAt} />
+                <SessionTimer expiresAt={expiresAt} onRefresh={refreshSession} />
 
                 <div className="sp-user-dropdown">
                   <button

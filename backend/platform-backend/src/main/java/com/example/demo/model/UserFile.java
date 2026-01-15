@@ -25,6 +25,18 @@ public class UserFile {
 
     private LocalDateTime uploadTime;
 
+    @Column(nullable = true)
+    private Double titleX;
+
+    @Column(nullable = true)
+    private Double titleY;
+
+    @Column(nullable = true)
+    private Double titleWidth;
+
+    @Column(nullable = true)
+    private Double titleHeight;
+
     public UserFile() {
         this.uploadTime = LocalDateTime.now();
     }
@@ -76,5 +88,37 @@ public class UserFile {
 
     public void setFileSize(Long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public Double getTitleX() {
+        return titleX;
+    }
+
+    public void setTitleX(Double titleX) {
+        this.titleX = titleX;
+    }
+
+    public Double getTitleY() {
+        return titleY;
+    }
+
+    public void setTitleY(Double titleY) {
+        this.titleY = titleY;
+    }
+
+    public Double getTitleWidth() {
+        return titleWidth;
+    }
+
+    public void setTitleWidth(Double titleWidth) {
+        this.titleWidth = titleWidth;
+    }
+
+    public Double getTitleHeight() {
+        return titleHeight;
+    }
+
+    public void setTitleHeight(Double titleHeight) {
+        this.titleHeight = titleHeight;
     }
 }

@@ -1,6 +1,7 @@
 // React 훅들 import: useEffect(사이드이펙트), useMemo(메모이제이션), useRef(DOM 참조), useState(상태)
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SelectionOverlay from './SelectionOverlay';
+import { useToast } from '../context/ToastContext';
 // pdf.js 라이브러리 import (PDF 로드/페이지 렌더링)
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -17,6 +18,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 type PdfViewerProps = {
   // 외부에서 전달받는 파일(없으면 null)
   file: File | null;
+  // 선택 영역 저장 콜백
+  onSaveSelection?: (rect: { x: number, y: number, width: number, height: number }) => void;
+  // 초기 선택 영역 (저장된 값)
+  initialSelection?: { x: number, y: number, width: number, height: number } | null;
 };
 
 // Button style constant
@@ -33,12 +38,18 @@ const iconBtnStyle: React.CSSProperties = {
 };
 
 // PdfViewer 컴포넌트 export (PDF 미리보기 담당)
-export default function PdfViewer({ file }: PdfViewerProps) {
+export default function PdfViewer({ file, onSaveSelection, initialSelection }: PdfViewerProps) {
+  // ... existing code ...
+
+
   // ✅ canvas DOM을 직접 조작해야 하므로 ref로 캔버스 요소를 잡아둠
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // ✅ pdf 문서 객체(= pdfjsLib.getDocument(...) 결과) 상태로 저장
   const [pdf, setPdf] = useState<any>(null);
+  // ✅ 이미지 객체 상태 저장 (PDF가 아닐 경우)
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+
   // ✅ 전체 페이지 수(numPages)를 저장
   const [pageCount, setPageCount] = useState(0);
   // ✅ 현재 보고 있는 페이지 번호(1부터 시작)
@@ -55,10 +66,20 @@ export default function PdfViewer({ file }: PdfViewerProps) {
   const [rendering, setRendering] = useState(false);
   // ✅ 에러 메시지(있으면 화면에 표시)
   const [error, setError] = useState('');
+  const { showToast } = useToast();
 
   // ✅ 표제란 선택 모드
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedRect, setSelectedRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
+
+  // ✅ 초기 선택 영역이 있으면 상태 초기화
+  useEffect(() => {
+    if (initialSelection) {
+      setSelectedRect(initialSelection);
+    } else {
+      setSelectedRect(null);
+    }
+  }, [initialSelection, file]);
 
   // ✅ 파일명 문자열(파일이 없으면 빈 문자열)
   const fileName = file?.name ?? '';
@@ -72,7 +93,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
     return `${mb.toFixed(2)} MB`;
   }, [file]); // file이 바뀔 때만 다시 계산
 
-  // 1) 파일이 바뀌면 PDF 문서를 "한 번만" 로드해서 캐싱
+  // 1) 파일이 바뀌면 PDF/이미지 문서를 "한 번만" 로드해서 캐싱
   useEffect(() => {
     // ✅ 비동기 작업 중 컴포넌트가 언마운트되거나 file이 바뀌면
     // setState를 막기 위한 플래그(레이스컨디션 방지)
@@ -82,8 +103,9 @@ export default function PdfViewer({ file }: PdfViewerProps) {
     async function load() {
       // 이전 에러 메시지 제거
       setError('');
-      // 이전 pdf 객체 제거
+      // 이전 객체들 제거
       setPdf(null);
+      setImageObj(null);
       // 페이지 수 초기화
       setPageCount(0);
       // 현재 페이지도 1로 초기화
@@ -95,20 +117,35 @@ export default function PdfViewer({ file }: PdfViewerProps) {
       try {
         // 로딩 시작 플래그 ON
         setLoadingDoc(true);
-        // File -> ArrayBuffer로 읽기(pdf.js는 data(ArrayBuffer)로 받는게 안정적)
-        const arrayBuffer = await file.arrayBuffer();
-        // pdf 문서 로드(getDocument는 로딩 태스크를 리턴하고, promise로 완료를 받음)
-        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        // 중간에 취소되었다면 결과 반영하지 않음
-        if (cancelled) return;
 
-        // pdf 문서 객체 상태 저장(캐싱)
-        setPdf(doc);
-        // 전체 페이지 수 상태 저장
-        setPageCount(doc.numPages);
+        // 파일 타입 확인
+        const isImage = file.type.startsWith('image/');
+
+        if (isImage) {
+          // 이미지 로딩
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.src = url;
+          await img.decode(); // 이미지 디코딩 대기
+
+          if (cancelled) return;
+          setImageObj(img);
+          setPageCount(1); // 이미지는 1페이지
+        } else {
+          // PDF 로딩
+          // File -> ArrayBuffer로 읽기(pdf.js는 data(ArrayBuffer)로 받는게 안정적)
+          const arrayBuffer = await file.arrayBuffer();
+          // pdf 문서 로드
+          const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+          if (cancelled) return;
+          setPdf(doc);
+          setPageCount(doc.numPages);
+        }
+
       } catch (e: any) {
         // 에러 메시지 저장(없으면 기본 문구)
-        setError(e?.message ?? 'PDF 로딩 중 오류가 발생했습니다.');
+        setError(e?.message ?? '문서 로딩 중 오류가 발생했습니다.');
       } finally {
         // 취소되지 않았을 때만 로딩 플래그 OFF
         if (!cancelled) setLoadingDoc(false);
@@ -134,8 +171,8 @@ export default function PdfViewer({ file }: PdfViewerProps) {
     async function render() {
       // 이전 에러 메시지 제거
       setError('');
-      // pdf 문서가 없으면 렌더할 수 없음
-      if (!pdf) return;
+      // 문서가 없으면 렌더할 수 없음
+      if (!pdf && !imageObj) return;
 
       // canvas DOM 가져오기
       const canvas = canvasRef.current;
@@ -146,29 +183,60 @@ export default function PdfViewer({ file }: PdfViewerProps) {
         // 렌더링 시작 플래그 ON
         setRendering(true);
 
-        // ✅ page가 범위 밖이면 1~pageCount 사이로 보정
-        const safePage = Math.min(Math.max(1, page), pageCount || 1);
-        // 보정 값이 기존 page와 다르면 page를 바꾸고 이번 렌더는 종료(다음 effect에서 렌더)
-        if (safePage !== page) {
-          setPage(safePage);
-          return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        // 이미지 렌더링
+        if (imageObj) {
+          let width = imageObj.naturalWidth;
+          let height = imageObj.naturalHeight;
+
+          // 회전에 따른 캔버스 크기 계산
+          const isVertical = rotation === 90 || rotation === 270;
+          const canvasWidth = (isVertical ? height : width) * scale;
+          const canvasHeight = (isVertical ? width : height) * scale;
+
+          canvas.width = Math.floor(canvasWidth);
+          canvas.height = Math.floor(canvasHeight);
+
+          // 캔버스 초기화
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.save();
+
+          // 회전 및 스케일 처리
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.scale(scale, scale);
+          ctx.drawImage(imageObj, -width / 2, -height / 2);
+
+          ctx.restore();
+
+          if (cancelled) return;
+
+        } else if (pdf) {
+          // PDF 렌더링
+          // ✅ page가 범위 밖이면 1~pageCount 사이로 보정
+          const safePage = Math.min(Math.max(1, page), pageCount || 1);
+          // 보정 값이 기존 page와 다르면 page를 바꾸고 이번 렌더는 종료(다음 effect에서 렌더)
+          if (safePage !== page) {
+            setPage(safePage);
+            return;
+          }
+
+          // pdf에서 해당 페이지 객체를 가져옴(1-based)
+          const pdfPage = await pdf.getPage(safePage);
+          // 현재 scale/rotation 기준으로 viewport(픽셀 크기 포함) 계산
+          const viewport = pdfPage.getViewport({ scale, rotation });
+
+          // 캔버스 크기를 viewport에 맞게 설정(정수로)
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+
+          // ✅ 취소 가능한 렌더 태스크 생성
+          renderTask = pdfPage.render({ canvas, viewport });
+          // 렌더 완료까지 대기
+          await renderTask.promise;
         }
-
-        // pdf에서 해당 페이지 객체를 가져옴(1-based)
-        const pdfPage = await pdf.getPage(safePage);
-        // 현재 scale/rotation 기준으로 viewport(픽셀 크기 포함) 계산
-        const viewport = pdfPage.getViewport({ scale, rotation });
-
-        // 캔버스 크기를 viewport에 맞게 설정(정수로)
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-
-        // ✅ 취소 가능한 렌더 태스크 생성(페이지 빠르게 넘기면 이전 렌더 취소 필요)
-        // pdf.js render는 일반적으로 canvasContext를 받기도 하는데,
-        // 이 코드에서는 canvas를 직접 넘기는 형태를 사용(환경에 따라 wrapper가 처리)
-        renderTask = pdfPage.render({ canvas, viewport });
-        // 렌더 완료까지 대기
-        await renderTask.promise;
 
         // 렌더 완료 후 취소 상태면 상태 업데이트 하지 않음
         if (cancelled) return;
@@ -177,7 +245,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
         const msg = e?.message ?? '';
         // cancel 관련 에러가 아니면 사용자에게 표시
         if (!msg.toLowerCase().includes('cancel')) {
-          setError(msg || 'PDF 렌더링 중 오류가 발생했습니다.');
+          setError(msg || '렌더링 중 오류가 발생했습니다.');
         }
       } finally {
         // 취소되지 않았다면 렌더링 플래그 OFF
@@ -196,7 +264,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
         renderTask?.cancel?.();
       } catch { }
     };
-  }, [pdf, page, pageCount, scale, rotation]); // 이 값들 중 하나라도 바뀌면 다시 렌더
+  }, [pdf, imageObj, page, pageCount, scale, rotation]); // 이 값들 중 하나라도 바뀌면 다시 렌더
 
   // 이전 페이지로 갈 수 있는지(문서가 있고 page>1)
   const canPrev = !!pdf && page > 1;
@@ -217,14 +285,21 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
   // 컨테이너 폭에 맞춤
   async function fitWidth() {
-    if (!pdf) return;
+    if (!pdf && !imageObj) return;
     try {
-      const pageObj = await pdf.getPage(page);
-      const viewport = pageObj.getViewport({ scale: 1.0 });
+      let width = 0;
+      if (imageObj) {
+        width = imageObj.naturalWidth;
+      } else if (pdf) {
+        const pageObj = await pdf.getPage(page);
+        const viewport = pageObj.getViewport({ scale: 1.0 });
+        width = viewport.width;
+      }
+
       const containerWidth = canvasRef.current?.parentElement?.clientWidth || 0;
-      if (containerWidth > 0) {
+      if (containerWidth > 0 && width > 0) {
         // 여백(padding) 등 고려하여 약간 작게 잡음
-        const newScale = (containerWidth - 40) / viewport.width;
+        const newScale = (containerWidth - 40) / width;
         setScale(Math.floor(newScale * 10) / 10);
       }
     } catch (e) {
@@ -336,13 +411,13 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
         {/* Zoom Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <button onClick={zoomOut} disabled={!pdf} style={iconBtnStyle} title="축소">
+          <button onClick={zoomOut} disabled={!pdf && !imageObj} style={iconBtnStyle} title="축소">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
           </button>
           <div style={{ fontSize: 13, minWidth: 44, textAlign: 'center', fontWeight: 500 }}>
             {Math.round(scale * 100)}%
           </div>
-          <button onClick={zoomIn} disabled={!pdf} style={iconBtnStyle} title="확대">
+          <button onClick={zoomIn} disabled={!pdf && !imageObj} style={iconBtnStyle} title="확대">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
           </button>
         </div>
@@ -355,7 +430,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
         <div style={{ display: 'flex', gap: 2 }}>
           <button
             onClick={fitWidth}
-            disabled={!pdf}
+            disabled={!pdf && !imageObj}
             style={{
               ...iconBtnStyle,
               width: 'auto',
@@ -372,7 +447,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
           <button
             onClick={() => setRotation((r) => ((r + 90) % 360) as 0 | 90 | 180 | 270)}
-            disabled={!pdf}
+            disabled={!pdf && !imageObj}
             style={{
               ...iconBtnStyle,
               width: 'auto',
@@ -429,7 +504,7 @@ export default function PdfViewer({ file }: PdfViewerProps) {
             height: 'auto'
           }}
           title="표제란 영역 설정"
-          disabled={!pdf}
+          disabled={!pdf && !imageObj}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -442,7 +517,8 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
       {/* 상태 표시 */}
       {(loadingDoc || rendering) && (
-        <div style={{ fontSize: 12, color: '#555', paddingLeft: 4 }}>
+        <div style={{ fontSize: 12, color: '#555', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
           {loadingDoc ? 'PDF 로딩 중…' : '페이지 렌더링 중…'}
         </div>
       )}
@@ -452,13 +528,15 @@ export default function PdfViewer({ file }: PdfViewerProps) {
       {selectedRect && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 4, marginTop: -4, marginBottom: 8 }}>
           <div style={{ fontSize: 12, color: '#2563eb' }}>
-            선택됨: x={selectedRect.x.toFixed(0)}, y={selectedRect.y.toFixed(0)}, w={selectedRect.width.toFixed(0)}, h={selectedRect.height.toFixed(0)}
+            선택됨: x={selectedRect?.x?.toFixed(0)}, y={selectedRect?.y?.toFixed(0)}, w={selectedRect?.width?.toFixed(0)}, h={selectedRect?.height?.toFixed(0)}
           </div>
           <button
             onClick={() => {
-              alert(`저장되었습니다!\n\n좌표:\n${JSON.stringify(selectedRect, null, 2)}\n\n(이미지는 서버 전송 시 함께 처리됩니다)`);
-              // Here is where actual save logic will go (API call)
-              console.log("Saving selection coordinates:", selectedRect);
+              if (onSaveSelection && selectedRect) {
+                onSaveSelection(selectedRect);
+              } else {
+                showToast(`저장되었습니다! (좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
+              }
             }}
             style={{
               background: '#2563eb',
@@ -478,16 +556,18 @@ export default function PdfViewer({ file }: PdfViewerProps) {
 
       {/* 캔버스 영역 */}
       <div style={{ ...canvasContainerStyle, position: 'relative' }}>
-        <canvas
-          ref={canvasRef}
-          style={{ display: 'block', margin: '0 auto' }}
-        />
-        <SelectionOverlay
-          isActive={isSelectionMode}
-          scale={scale}
-          rect={selectedRect}
-          onChange={(rect) => setSelectedRect(rect)}
-        />
+        <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'block' }}
+          />
+          <SelectionOverlay
+            isActive={isSelectionMode}
+            scale={scale}
+            rect={selectedRect}
+            onChange={(rect) => setSelectedRect(rect)}
+          />
+        </div>
       </div>
     </div>
   );

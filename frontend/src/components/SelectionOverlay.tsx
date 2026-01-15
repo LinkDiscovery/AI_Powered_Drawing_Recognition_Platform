@@ -53,15 +53,16 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
     });
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        if (!isActive || !containerRef.current) return;
-        e.preventDefault();
+        if (!isActive) return;
+        // Don't prevent default here to allow focus, but we stop propagation
         e.stopPropagation();
 
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const mouseX = e.clientX - containerRect.left;
-        const mouseY = e.clientY - containerRect.top;
+        // Use consistent coordinate system: clientX/Y relative to clientRect
+        // This is safer than mixing offsetX/Y which can differ in rounding or origin
+        const rect = e.currentTarget.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
 
-        // If we clicked simply on the container "background", we start creating.
         setDragState({
             mode: 'create',
             startX: mouseX,
@@ -73,14 +74,14 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
 
     const handleBoxMouseDown = (e: React.MouseEvent) => {
         if (!isActive || !rect) return;
-        e.stopPropagation(); // Don't trigger container create
+        e.stopPropagation();
 
         // Start Move
         setDragState({
             mode: 'move',
             startX: e.clientX,
             startY: e.clientY,
-            startRect: { ...rect } // Copy PDF rect
+            startRect: { ...rect }
         });
     };
 
@@ -103,9 +104,10 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         e.preventDefault();
 
         if (dragState.mode === 'create') {
-            const containerRect = containerRef.current.getBoundingClientRect();
-            const currX = e.clientX - containerRect.left;
-            const currY = e.clientY - containerRect.top;
+            // Use exactly the same logic as mouseDown to ensure zero drift
+            const rect = e.currentTarget.getBoundingClientRect();
+            const currX = e.clientX - rect.left;
+            const currY = e.clientY - rect.top;
 
             const x = Math.min(dragState.startX, currX);
             const y = Math.min(dragState.startY, currY);
@@ -115,7 +117,7 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
             setTempRect({ x, y, width, height });
         }
         else if (dragState.mode === 'move' && dragState.startRect) {
-            const dx = (e.clientX - dragState.startX) / scale; // delta in PDF points
+            const dx = (e.clientX - dragState.startX) / scale;
             const dy = (e.clientY - dragState.startY) / scale;
 
             onChange({
@@ -130,9 +132,6 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
 
             const r = { ...dragState.startRect };
 
-            // Should properly handle negative flipping... simple version first:
-            // Assuming startRect width/height are positive.
-
             if (dragState.handle?.includes('e')) r.width += dx;
             if (dragState.handle?.includes('s')) r.height += dy;
             if (dragState.handle?.includes('w')) {
@@ -144,7 +143,6 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                 r.height -= dy;
             }
 
-            // Normalize if width/height < 0
             if (r.width < 0) { r.x += r.width; r.width = -r.width; }
             if (r.height < 0) { r.y += r.height; r.height = -r.height; }
 
@@ -156,7 +154,6 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         if (!isActive || !dragState) return;
 
         if (dragState.mode === 'create' && tempRect) {
-            // Finalize creation
             if (tempRect.width > 5 && tempRect.height > 5) {
                 onChange(toPdf(tempRect));
             }
@@ -166,7 +163,6 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         setDragState(null);
     };
 
-    // Render logic
     const screenRect = rect ? toScreen(rect) : null;
 
     return (
@@ -181,7 +177,7 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp} // Stop drag if leaves container
+            onMouseLeave={handleMouseUp}
         >
             {/* Existing Selection Box */}
             {screenRect && (
@@ -196,6 +192,8 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                         backgroundColor: 'rgba(37, 99, 235, 0.15)',
                         cursor: 'move',
                         boxSizing: 'border-box',
+                        // Vital: Disable pointer events during creation to ensure offsetX is relative to container
+                        pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto'
                     }}
                     onMouseDown={handleBoxMouseDown}
                 >
@@ -212,7 +210,8 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                                 [h.includes('n') ? 'top' : 'bottom']: -4,
                                 [h.includes('w') ? 'left' : 'right']: -4,
                                 cursor: `${h}-resize`,
-                                zIndex: 1
+                                zIndex: 1,
+                                pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto'
                             }}
                         />
                     ))}
@@ -243,8 +242,9 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                         top: tempRect.y,
                         width: tempRect.width,
                         height: tempRect.height,
-                        border: '2px dashed #d93025',
+                        border: '1px solid #d93025',
                         backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                        boxSizing: 'border-box',
                         pointerEvents: 'none'
                     }}
                 />
