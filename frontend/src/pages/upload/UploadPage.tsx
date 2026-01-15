@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useFiles } from '../../context/FileContext';
 import './UploadPage.css';
 
+import { useAuth } from '../../context/AuthContext';
+
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { items, addFiles, removeItem, hasItems, canGoPreview, selectedId, setSelectedId } = useFiles();
+  const { items, addFiles, removeItem, hasItems, canGoPreview, selectedId, setSelectedId, claimFile } = useFiles();
+  const { isAuthenticated, openLoginModal } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
 
   function openFilePicker() {
     inputRef.current?.click();
@@ -36,6 +40,32 @@ export default function UploadPage() {
   function onDragLeave(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setIsDragOver(false);
+  }
+
+  async function handleSaveToMyPage(item: any) {
+    if (!isAuthenticated) {
+      openLoginModal();
+      return;
+    }
+    if (!item.dbId) {
+      alert("파일이 아직 업로드되지 않았습니다.");
+      return;
+    }
+
+    try {
+      setSavingIds(prev => new Set(prev).add(item.id));
+      await claimFile(item.dbId);
+      alert("My Page에 저장되었습니다.");
+    } catch (e) {
+      console.error(e);
+      alert("저장 실패");
+    } finally {
+      setSavingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
   }
 
   return (
@@ -75,6 +105,25 @@ export default function UploadPage() {
                   <li key={it.id} className="uploader-item">
                     <span className="uploader-item__icon">{it.mime.includes('pdf') ? '📄' : '🖼️'}</span>
                     <span className="uploader-item__name">{it.name}</span>
+
+                    <button
+                      className="btn-save-mypage"
+                      onClick={() => handleSaveToMyPage(it)}
+                      disabled={savingIds.has(it.id)}
+                      style={{
+                        marginRight: '12px',
+                        padding: '4px 12px',
+                        fontSize: '12px',
+                        borderRadius: '4px',
+                        border: '1px solid #ccc',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        color: '#333'
+                      }}
+                    >
+                      {savingIds.has(it.id) ? '저장 중...' : 'My Page에 저장하기'}
+                    </button>
+
                     <button className="uploader-item__delete" onClick={() => removeItem(it.id)}>×</button>
                   </li>
                 ))}

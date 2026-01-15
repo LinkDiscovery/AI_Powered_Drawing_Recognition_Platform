@@ -35,4 +35,20 @@ public class UserService {
         }
         return null;
     }
+
+    public void updateNotes(String email, String notes) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setNotes(notes);
+            userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+    public String getNotes(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        return userOptional.map(User::getNotes).orElse("");
+    }
 }

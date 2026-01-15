@@ -3,6 +3,7 @@ import RootLayout from './layouts/RootLayout';
 
 import UploadPage from './pages/upload/UploadPage';
 import PreviewPage from './pages/preview/PreviewPage';
+import UserDashboard from './pages/dashboard/UserDashboard';
 // 필요하면 다른 페이지들도 추가
 
 export const router = createBrowserRouter([
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { index: true, element: <UploadPage /> },
       { path: 'upload', element: <UploadPage /> },
       { path: 'preview', element: <PreviewPage /> },
+      { path: 'dashboard', element: <UserDashboard /> },
       // { path: 'pricing', element: <PricingPage /> },
       // { path: 'teams', element: <TeamsPage /> },
     ],

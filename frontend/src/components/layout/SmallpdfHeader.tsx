@@ -87,8 +87,8 @@ const SessionTimer = ({ expiresAt }: { expiresAt: number | null }) => {
 export default function SmallpdfHeader() {
   const { pathname } = useLocation();
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false); // Auth Modal State
-  const { user, logout, isAuthenticated, expiresAt } = useAuth(); // Auth Context
+  const [userMenuOpen, setUserMenuOpen] = useState(false); // User Dropdown State
+  const { user, logout, isAuthenticated, expiresAt, isLoginModalOpen, openLoginModal, closeLoginModal } = useAuth(); // Auth Context
 
   // 활성 탭 판정(가장 단순하게: pathname이 href로 시작하면 active)
   const activeTabId = useMemo(() => {
@@ -212,29 +212,74 @@ export default function SmallpdfHeader() {
             {isAuthenticated && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <SessionTimer expiresAt={expiresAt} />
-                <span style={{ fontSize: '14px', fontWeight: 600 }}>{user.name}</span>
-                <button
-                  className="sp-btn sp-btn--ghost"
-                  type="button"
-                  onClick={logout}
-                  style={{ padding: '8px 12px', fontSize: '13px' }}
-                >
-                  로그아웃
-                </button>
+
+                <div className="sp-user-dropdown">
+                  <button
+                    className={`sp-user-trigger ${userMenuOpen ? 'active' : ''}`}
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    onBlur={(e) => {
+                      // Close menu if focus leaves the dropdown area
+                      if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
+                        setUserMenuOpen(false);
+                      }
+                    }}
+                  >
+                    <div className="sp-user-avatar">
+                      {/* Simple Avatar Placeholder: First letter or image */}
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="sp-user-name">{user.name}</span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="#5f6368" style={{ transform: userMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                      <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+
+                  {userMenuOpen && (
+                    <div className="sp-user-menu" role="menu">
+                      <div className="sp-user-menu-header">
+                        <div className="sp-user-menu-name">{user.name}</div>
+                        <div className="sp-user-menu-email">{user.email}</div>
+                      </div>
+
+                      <Link to="/dashboard" className="sp-user-menu-item" onClick={() => setUserMenuOpen(false)}>
+                        <svg className="sp-user-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <path d="M9 3v18" />
+                        </svg>
+                        마이 페이지
+                      </Link>
+
+                      <div className="sp-user-menu-divider" />
+
+                      <button
+                        className="sp-user-menu-item"
+                        onClick={() => { logout(); setUserMenuOpen(false); }}
+                        style={{ color: '#d93025' }}
+                      >
+                        <svg className="sp-user-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        로그아웃
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <>
                 <button
                   className="sp-btn sp-btn--ghost"
                   type="button"
-                  onClick={() => setAuthOpen(true)}
+                  onClick={openLoginModal}
                 >
                   {smallpdfHeaderConfig.auth.login.label}
                 </button>
                 <button
                   className="sp-btn sp-btn--primary"
                   type="button"
-                  onClick={() => setAuthOpen(true)} // Open modal also for trial/signup
+                  onClick={openLoginModal} // Open modal also for trial/signup
                 >
                   {smallpdfHeaderConfig.auth.trial.label}
                 </button>
@@ -254,7 +299,7 @@ export default function SmallpdfHeader() {
       </div>
 
       {/* Auth Modal Integration */}
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
-    </header>
+      <AuthModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
+    </header >
   );
 }

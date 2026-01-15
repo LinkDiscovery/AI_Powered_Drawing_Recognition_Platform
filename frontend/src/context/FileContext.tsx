@@ -1,11 +1,14 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 
+// ... (Types extracted from UploadPage, unchanged)
 // Types extracted from UploadPage
 export type Step = 'upload' | 'preview';
 export type Status = 'idle' | 'uploading' | 'processing' | 'ready' | 'error';
 
 export type UploadItem = {
-    id: string;
+    id: string; // Frontend ID
+    dbId?: number; // Backend DB ID
     name: string;
     sizeText: string;
     progress: number; // 0~100
@@ -15,7 +18,7 @@ export type UploadItem = {
     file?: File;
 };
 
-// Helper functions (could be moved to utility, but keeping here for now)
+// ... (Helper functions unchanged)
 function formatSize(bytes: number) {
     const mb = bytes / (1024 * 1024);
     if (mb >= 1) return `${mb.toFixed(2)} MB`;
@@ -42,6 +45,7 @@ interface FileContextType {
     activeItem: UploadItem | undefined;
     hasItems: boolean;
     canGoPreview: boolean;
+    claimFile: (dbId: number) => Promise<void>;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -55,8 +59,19 @@ export function useFiles() {
 }
 
 export function FileProvider({ children }: { children: ReactNode }) {
+    const { token } = useAuth(); // Access authentication token
     const [items, setItems] = useState<UploadItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const prevTokenRef = useRef<string | null>(token);
+
+    // Effect: Clear items when user logs out (transition from token -> no token)
+    useEffect(() => {
+        if (prevTokenRef.current && !token) {
+            setItems([]);
+            setSelectedId(null);
+        }
+        prevTokenRef.current = token;
+    }, [token]);
 
     const hasItems = items.length > 0;
 
@@ -68,6 +83,78 @@ export function FileProvider({ children }: { children: ReactNode }) {
     const canGoPreview = useMemo(() => {
         return items.some((it) => it.status === 'ready' || it.status === 'processing' || it.status === 'uploading');
     }, [items]);
+
+    function updateItemStatus(id: string, progress: number, status: Status, message: string) {
+        setItems((prev) =>
+            prev.map((x) => {
+                if (x.id !== id) return x;
+                return { ...x, progress, status, message };
+            })
+        );
+    }
+
+    async function uploadFile(item: UploadItem) {
+        // If authenticated, perform real upload
+        // (Even if not authenticated for this specific task scope, we might want to upload to backend to get 'processing' logic later.
+        // But for now, user requested 'saved when logged in'. Unauthenticated users might just get simulation or anonymous upload.)
+        // Let's do real upload if token exists, fallback to sim if not (or maybe real upload without token if backend allows anonymous).
+        // FileController allows anonymous upload (token optional). So let's ALWAYS upload to backend to be consistent!
+
+        const formData = new FormData();
+        if (item.file) {
+            formData.append('file', item.file);
+        }
+
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'http://localhost:8080/files', true);
+            if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            }
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    // Update progress (0-99 during upload)
+                    updateItemStatus(item.id, percentComplete < 100 ? percentComplete : 99, 'uploading', '업로드 중...');
+                }
+            };
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        // Atomic update: Set DB ID and Status to Ready
+                        setItems((prev) => prev.map(x => {
+                            if (x.id !== item.id) return x;
+                            return {
+                                ...x,
+                                dbId: res.id,
+                                progress: 100,
+                                status: 'ready',
+                                message: '검사 완료'
+                            };
+                        }));
+                    } catch (e) {
+                        // Fallback if parsing fails (shouldn't happen with correct backend)
+                        updateItemStatus(item.id, 100, 'ready', '검사 완료 (ID missing)');
+                    }
+                } else {
+                    updateItemStatus(item.id, 0, 'error', '업로드 실패');
+                }
+            };
+
+            xhr.onerror = function () {
+                updateItemStatus(item.id, 0, 'error', '네트워크 오류');
+            };
+
+            xhr.send(formData);
+
+        } catch (e) {
+            console.error(e);
+            updateItemStatus(item.id, 0, 'error', '오류 발생');
+        }
+    }
 
     function addFiles(fileList: FileList | null) {
         if (!fileList || fileList.length === 0) return;
@@ -107,34 +194,10 @@ export function FileProvider({ children }: { children: ReactNode }) {
             return merged;
         });
 
-        // Simulate upload/processing
+        // Trigger Upload
         next.forEach((it) => {
             if (it.status === 'error') return;
-
-            const id = it.id;
-            let p = 0;
-            const timer = window.setInterval(() => {
-                p += 8;
-                setItems((prev) =>
-                    prev.map((x) => {
-                        if (x.id !== id) return x;
-                        const nextP = Math.min(100, p);
-
-                        if (nextP < 60) {
-                            return { ...x, progress: nextP, status: 'uploading', message: '업로드 중...' };
-                        }
-                        if (nextP < 95) {
-                            return { ...x, progress: nextP, status: 'processing', message: '변환 준비 중...' };
-                        }
-                        if (nextP >= 100) {
-                            return { ...x, progress: 100, status: 'ready', message: 'Ready' };
-                        }
-                        return { ...x, progress: nextP, status: 'processing', message: '처리 중...' };
-                    })
-                );
-
-                if (p >= 100) window.clearInterval(timer);
-            }, 120);
+            uploadFile(it);
         });
     }
 
@@ -146,6 +209,15 @@ export function FileProvider({ children }: { children: ReactNode }) {
         if (selectedId === id) setSelectedId(null);
     }
 
+    async function claimFile(dbId: number) {
+        if (!token) throw new Error("Login required");
+        const res = await fetch(`http://localhost:8080/api/files/${dbId}/assign`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error("Failed to claim file");
+    }
+
     const value = {
         items,
         addFiles,
@@ -155,6 +227,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
         activeItem,
         hasItems,
         canGoPreview,
+        claimFile
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

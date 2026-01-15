@@ -16,6 +16,10 @@ interface AuthContextType {
     logout: () => void;
     isAuthenticated: boolean;
     expiresAt: number | null; // Unix timestamp in seconds
+    token: string | null;
+    isLoginModalOpen: boolean;
+    openLoginModal: () => void;
+    closeLoginModal: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +30,10 @@ const TOKEN_KEY = 'aidraw_auth_token';
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
+    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+    const openLoginModal = () => setIsLoginModalOpen(true);
+    const closeLoginModal = () => setIsLoginModalOpen(false);
 
     // Load user from localStorage on mount
     useEffect(() => {
@@ -121,13 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 };
                 // Mock expiration: 30 minutes from now
                 const mockExp = Math.floor(Date.now() / 1000) + (30 * 60);
-                // We can't really decode a mock token string with jwtDecode properly 
-                // unless we fake the structure, so we'll just set state manually for mock.
-                // However, saveUser tries to decode. 
-                // Let's just create a dummy "saveUser" for mock or handle it inside saveUser.
-
-                // For simplicity in this tool call, I'll allow saveUser to fail decoding 
-                // but we should manually setExpiresAt for mock.
                 setUser(mockUser);
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mockUser));
                 localStorage.setItem(TOKEN_KEY, token);
@@ -187,7 +188,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         googleAuth,
         logout,
         isAuthenticated: !!user,
-        expiresAt
+        expiresAt,
+        token: localStorage.getItem(TOKEN_KEY),
+        isLoginModalOpen,
+        openLoginModal,
+        closeLoginModal
     };
 
     return (
