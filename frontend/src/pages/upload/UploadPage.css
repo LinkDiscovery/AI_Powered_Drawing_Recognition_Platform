@@ -91,94 +91,83 @@
 /* Hero Section: The Red Banner Dropzone */
 .tool-hero-banner {
     width: 100%;
-    max-width: 100%;
-    /* Container controls width now */
     background-color: #F23030;
-    /* User's Custom Red #F23030 */
-    background: #F23030;
-    /* Solid color preferred over gradient for flat look */
-    border-radius: 12px;
-    /* Increased radius for outer box */
-    padding: 8px;
-    /* Matching user's request for tighter fit */
+    border-radius: 8px;
+    /* Smallpdf uses 8px */
+    padding: 10px;
+    /* Gap for the dashed border */
     box-shadow: 0 12px 24px rgba(229, 62, 62, 0.083);
     margin-bottom: 0px;
-    /* Removed margin as requested */
     position: relative;
-    transition: transform 0.2s;
-
-    /* Flex Center Content */
+    /* Fixed height to match reference */
+    height: 300px;
+    box-sizing: border-box;
     display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-    /* Reduced from 260px */
-    /* Ensure strictly defined height for the hero look */
+    flex-direction: column;
 }
 
 /* The actual clickable area with dashed border */
 .uploader-dropzone {
     width: 100%;
-    max-width: 100%;
-    border: 2px dashed rgba(255, 255, 255, 0.9);
-    /* High density/visibility */
-    border-radius: 8px;
-    min-height: 160px;
+    height: 100%;
+    border: 1px dashed rgba(255, 255, 255, 0.8);
+    /* Thinner, white dashed border */
+    border-radius: 4px;
+    /* Slightly smaller radius for inner box */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    background-color: #DC2E2E;
-    /* User's inner color #DC2E2E */
+    background-color: transparent;
+    /* Transparent to show red bg */
     transition: background-color 0.2s, border-color 0.2s;
 }
 
 .uploader-dropzone:hover,
 .uploader-dropzone--active {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.05);
     border-color: #ffffff;
 }
 
 /* Icon inside Red Banner */
 .uploader-icon {
-    margin-bottom: 0;
-    /* Drastically reduced gap */
+    margin-bottom: 24px;
+    /* More spacing above button */
     color: #ffffff;
+    opacity: 0.9;
 }
 
 /* Button inside Red Banner */
 .uploader-btn {
     background-color: #ffffff;
-    color: #1a1a1a;
+    color: #212121;
+    /* Dark grey text */
     border: none;
     border-radius: 4px;
-    padding: 12px 20px 12px 16px;
-    /* Reduced padding */
-    font-size: 18px;
+    padding: 15px 24px;
+    /* Larger padding */
+    font-size: 16px;
     font-weight: 700;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin-bottom: 0px;
-    /* Drastically reduced gap */
+    margin-bottom: 16px;
     position: relative;
+    min-width: 180px;
+    justify-content: center;
 }
 
 .uploader-btn:hover {
     background-color: #f8f9fa;
-    transform: translateY(-1px);
 }
 
 .uploader-text {
     color: #ffffff;
     font-size: 16px;
-    font-weight: 500;
-    opacity: 0.9;
-    margin: 6px 0 0 0;
-    /* Top margin 6px as requested */
+    font-weight: 400;
+    margin: 0;
 }
 
 /* File List State (Inside Red Banner) */
