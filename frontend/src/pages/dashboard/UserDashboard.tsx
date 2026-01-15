@@ -53,7 +53,55 @@ export default function UserDashboard() {
         fetchFiles();
     }, [isAuthenticated, navigate, token]);
 
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const { openSingleFile } = useFiles();
+
+    // Reset selection when loading new list
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [fileList.length]);
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedIds(new Set(fileList.map(f => f.id)));
+        } else {
+            setSelectedIds(new Set());
+        }
+    };
+
+    const handleSelectOne = (id: number, checked: boolean) => {
+        const next = new Set(selectedIds);
+        if (checked) next.add(id);
+        else next.delete(id);
+        setSelectedIds(next);
+    };
+
+    const handleBatchDelete = async () => {
+        if (!token) return;
+        if (!window.confirm(`선택한 ${selectedIds.size}개 파일을 영구적으로 삭제하시겠습니까?`)) return;
+
+        setLoading(true);
+        try {
+            const deletePromises = Array.from(selectedIds).map(id =>
+                fetch(`http://localhost:8080/api/files/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+            );
+
+            await Promise.all(deletePromises);
+
+            // Optimistic update
+            setFileList(prev => prev.filter(f => !selectedIds.has(f.id)));
+            setSelectedIds(new Set());
+            showToast(`${selectedIds.size}개 파일이 삭제되었습니다.`, 'success');
+        } catch (e) {
+            console.error(e);
+            showToast("일괄 삭제 중 오류가 발생했습니다.", 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handlePreview = async (file: UserFile) => {
         if (!token) return;
@@ -178,9 +226,28 @@ export default function UserDashboard() {
                 </div>
             </div>
 
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px' }}>
-                내 도면 히스토리
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                    내 도면 히스토리
+                </h2>
+                {selectedIds.size > 0 && (
+                    <button
+                        onClick={handleBatchDelete}
+                        style={{
+                            padding: '8px 12px',
+                            background: '#ff4d4f',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: 600
+                        }}
+                    >
+                        선택한 {selectedIds.size}개 삭제
+                    </button>
+                )}
+            </div>
 
             {loading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
@@ -221,6 +288,13 @@ export default function UserDashboard() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                         <thead style={{ background: '#f5f5f5' }}>
                             <tr>
+                                <th style={{ padding: '12px 16px', width: 40, textAlign: 'center' }}>
+                                    <input
+                                        type="checkbox"
+                                        onChange={(e) => handleSelectAll(e.target.checked)}
+                                        checked={fileList.length > 0 && selectedIds.size === fileList.length}
+                                    />
+                                </th>
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>파일 이름</th>
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>크기</th>
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>업로드 일시</th>
@@ -229,7 +303,14 @@ export default function UserDashboard() {
                         </thead>
                         <tbody>
                             {fileList.map((file) => (
-                                <tr key={file.id} style={{ borderTop: '1px solid #eee' }}>
+                                <tr key={file.id} style={{ borderTop: '1px solid #eee', background: selectedIds.has(file.id) ? '#f0f5ff' : 'white' }}>
+                                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(file.id)}
+                                            onChange={(e) => handleSelectOne(file.id, e.target.checked)}
+                                        />
+                                    </td>
                                     <td style={{ padding: '12px 16px', color: '#333' }}>
                                         <div
                                             style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
