@@ -59,7 +59,7 @@ export default function UploadPage() {
       setSavingIds(prev => new Set(prev).add(item.id));
       await claimFile(item.dbId);
       setSavedDbIds(prev => new Set(prev).add(item.dbId));
-      showToast("My Page에 저장되었습니다.", 'success');
+      showToast("데이터가 저장되었습니다.", 'success');
     } catch (e) {
       console.error(e);
       showToast("저장 실패", 'error');
@@ -146,8 +146,8 @@ export default function UploadPage() {
                       }}
                     >
                       {savingIds.has(it.id) ? '저장 중...' :
-                        (it.dbId && savedDbIds.has(it.dbId)) ? 'My Page에서 보기' :
-                          'My Page에 저장하기'}
+                        (it.dbId && savedDbIds.has(it.dbId)) ? '데이터 확인' :
+                          '데이터 저장'}
                     </button>
 
                     <button className="uploader-item__delete" onClick={() => removeItem(it.id)}>×</button>

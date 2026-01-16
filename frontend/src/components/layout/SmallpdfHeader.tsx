@@ -297,18 +297,11 @@ export default function SmallpdfHeader() {
             ) : (
               <>
                 <button
-                  className="sp-btn sp-btn--ghost"
+                  className="sp-btn sp-btn--primary"
                   type="button"
                   onClick={openLoginModal}
                 >
                   {smallpdfHeaderConfig.auth.login.label}
-                </button>
-                <button
-                  className="sp-btn sp-btn--primary"
-                  type="button"
-                  onClick={openLoginModal} // Open modal also for trial/signup
-                >
-                  {smallpdfHeaderConfig.auth.trial.label}
                 </button>
               </>
             )}

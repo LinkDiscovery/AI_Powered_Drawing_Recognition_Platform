@@ -3,11 +3,52 @@ import { useNavigate } from 'react-router-dom';
 import PdfViewer from '../../components/PdfViewer';
 import { useFiles } from '../../context/FileContext';
 import Sidebar from '../../components/layout/Sidebar';
+import { useAuth } from '../../context/AuthContext';
 
 export default function PreviewPage() {
     const navigate = useNavigate();
+    const { token } = useAuth();
     const { activeItem, selectedId, hasItems } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
+    const [savedRect, setSavedRect] = useState(activeItem?.initialSelection);
+
+    // activeItem changes, update savedRect
+    useEffect(() => {
+        setSavedRect(activeItem?.initialSelection);
+    }, [activeItem]);
+
+    const handleDownload = () => {
+        if (!activeItem?.file) return;
+
+        // 1. Download File
+        const fileUrl = URL.createObjectURL(activeItem.file);
+        const a = document.createElement('a');
+        a.href = fileUrl;
+        a.download = activeItem.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(fileUrl);
+
+        // 2. Download JSON (if coordinates exist)
+        if (savedRect) {
+            const jsonContent = JSON.stringify({
+                fileName: activeItem.name,
+                coordinates: savedRect,
+                savedAt: new Date().toISOString()
+            }, null, 2);
+
+            const blob = new Blob([jsonContent], { type: 'application/json' });
+            const jsonUrl = URL.createObjectURL(blob);
+            const b = document.createElement('a');
+            b.href = jsonUrl;
+            b.download = `${activeItem.name}.json`;
+            document.body.appendChild(b);
+            b.click();
+            document.body.removeChild(b);
+            URL.revokeObjectURL(jsonUrl);
+        }
+    };
 
     // Redirect if no files
     useEffect(() => {
@@ -77,14 +118,72 @@ export default function PreviewPage() {
                             </div>
 
                             <div style={styles.actions}>
+                                <button
+                                    style={styles.actionBtn}
+                                    onClick={() => navigate('/')}
+                                    title="홈으로 이동"
+                                >
+                                    처음으로
+                                </button>
+                                <button
+                                    style={styles.actionBtn}
+                                    onClick={() => navigate('/dashboard')}
+                                    title="데이터 확인 및 수정 페이지로 이동"
+                                >
+                                    데이터 확인 및 수정
+                                </button>
                                 <button style={styles.actionBtn}>공유</button>
-                                <button style={{ ...styles.actionBtn, background: '#2563eb', color: 'white', borderColor: '#2563eb' }}>다운로드</button>
+                                <button
+                                    style={{ ...styles.actionBtn, background: '#2563eb', color: 'white', borderColor: '#2563eb' }}
+                                    onClick={handleDownload}
+                                >
+                                    다운로드
+                                </button>
                             </div>
                         </div>
 
                         <div style={styles.viewerContainer}>
                             {activeItem?.file ? (
-                                <PdfViewer file={activeItem.file} />
+                                <PdfViewer
+                                    file={activeItem.file}
+                                    initialSelection={activeItem.initialSelection}
+                                    onSaveSelection={async (rect) => {
+                                        if (!activeItem.dbId) {
+                                            alert('파일이 서버에 저장되지 않아 좌표를 저장할 수 없습니다.');
+                                            return;
+                                        }
+
+                                        if (!token) {
+                                            alert('로그인이 필요합니다.');
+                                            return;
+                                        }
+
+                                        // If rect is null, we are deleting
+                                        const payload = rect || { x: null, y: null, width: null, height: null };
+
+                                        try {
+                                            const res = await fetch(`http://localhost:8080/api/files/${activeItem.dbId}/coordinates`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': `Bearer ${token}`
+                                                },
+                                                body: JSON.stringify(payload)
+                                            });
+
+                                            if (res.ok) {
+                                                setSavedRect(rect); // Can be null
+                                                alert(rect ? '표제란 영역이 저장되었습니다.' : '표제란 설정이 삭제되었습니다.');
+                                            } else {
+                                                const txt = await res.text();
+                                                alert(`요청 실패: ${res.status} ${txt}`);
+                                            }
+                                        } catch (e) {
+                                            console.error(e);
+                                            alert('오류 발생');
+                                        }
+                                    }}
+                                />
                             ) : (
                                 <div>파일 없음</div>
                             )}

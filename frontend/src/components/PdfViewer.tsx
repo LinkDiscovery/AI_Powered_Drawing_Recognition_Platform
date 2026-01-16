@@ -20,7 +20,7 @@ type PdfViewerProps = {
   // 외부에서 전달받는 파일(없으면 null)
   file: File | null;
   // 선택 영역 저장 콜백
-  onSaveSelection?: (rect: { x: number, y: number, width: number, height: number }) => void;
+  onSaveSelection?: (rect: { x: number, y: number, width: number, height: number } | null) => void;
   // 초기 선택 영역 (저장된 값)
   initialSelection?: { x: number, y: number, width: number, height: number } | null;
 };
@@ -74,6 +74,17 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
   // ✅ 표제란 선택 모드
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedRect, setSelectedRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
+
+  // ✅ ESC key listener to exit selection mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSelectionMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // ✅ 초기 선택 영역이 있으면 상태 초기화
   useEffect(() => {
@@ -698,7 +709,6 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
               return;
             }
             setIsSelectionMode(!isSelectionMode);
-            setSelectedRect(null); // Reset selection when toggling
           }}
           style={{
             ...iconBtnStyle,
@@ -734,49 +744,113 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
       }
       {error && <div style={{ color: 'crimson', fontSize: 12, paddingLeft: 4 }}>{error}</div>}
 
-      {/* Selected Rect Info and Save Button */}
-      {
-        selectedRect && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 4, marginTop: -4, marginBottom: 8 }}>
-            <div style={{ fontSize: 12, color: '#2563eb' }}>
-              선택됨: x={selectedRect?.x?.toFixed(0)}, y={selectedRect?.y?.toFixed(0)}, w={selectedRect?.width?.toFixed(0)}, h={selectedRect?.height?.toFixed(0)}
-            </div>
-            <button
-              onClick={() => {
-                if (!isAuthenticated) {
-                  showToast('로그인 후 이용할 수 있는 기능입니다.', 'error');
-                  openLoginModal();
-                  return;
-                }
-
-                if (onSaveSelection && selectedRect) {
-                  onSaveSelection(selectedRect);
-                } else {
-                  showToast(`저장되었습니다!(좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
-                }
-              }}
-              style={{
-                background: '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                padding: '4px 8px',
-                fontSize: 12,
-                cursor: 'pointer',
-                fontWeight: 600
-              }}
-            >
-              선택 영역 저장
-            </button>
-          </div>
-        )
-      }
-
       {/* 캔버스 영역 */}
       <div
         style={{ ...canvasContainerStyle, position: 'relative' }}
         onMouseDown={handleMouseDown}
       >
+        {/* Instructional Banner for Selection Mode */}
+        {isSelectionMode && (
+          <div style={{
+            position: 'sticky',
+            top: 10,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100,
+            background: 'rgba(33, 33, 33, 0.9)',
+            backdropFilter: 'blur(4px)',
+            color: 'white',
+            padding: '8px 16px',
+            borderRadius: 30,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 16,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            fontSize: 13,
+            width: 'fit-content',
+            maxWidth: '90%'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><path d="M9 3v18" /><path d="M3 9h18" /></svg>
+              <span>마우스로 표제란 영역을 드래그하여 지정하세요.</span>
+            </div>
+
+            <div style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.2)' }} />
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {selectedRect ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (onSaveSelection && selectedRect) {
+                        onSaveSelection(selectedRect);
+                      } else {
+                        showToast(`저장되었습니다!(좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
+                      }
+                    }}
+                    style={{
+                      background: '#2563eb',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 16,
+                      padding: '4px 12px',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm('설정된 표제란 영역을 삭제하시겠습니까?')) {
+                        setSelectedRect(null);
+                        if (onSaveSelection) onSaveSelection(null);
+                      }
+                    }}
+                    style={{
+                      background: '#fee2e2',
+                      color: '#ef4444',
+                      border: '1px solid #fecaca',
+                      borderRadius: 16,
+                      padding: '4px 10px',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                    title="영역 삭제"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                    삭제
+                  </button>
+                </>
+              ) : (
+                <span style={{ color: '#aaa', fontSize: 12 }}>선택 영역 없음</span>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsSelectionMode(false);
+                }}
+                style={{
+                  background: 'transparent',
+                  color: '#ccc',
+                  border: '1px solid #666',
+                  borderRadius: 16,
+                  padding: '4px 12px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                닫기(ESC)
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
           <canvas
             ref={canvasRef}

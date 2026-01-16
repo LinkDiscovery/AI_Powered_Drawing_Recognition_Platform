@@ -99,69 +99,80 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         });
     };
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isActive || !dragState || !containerRef.current) return;
-        e.preventDefault();
+    // Global event listeners for drag
+    useEffect(() => {
+        if (!dragState || !isActive) return;
 
-        if (dragState.mode === 'create') {
-            // Use exactly the same logic as mouseDown to ensure zero drift
-            const rect = e.currentTarget.getBoundingClientRect();
-            const currX = e.clientX - rect.left;
-            const currY = e.clientY - rect.top;
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+            if (!containerRef.current) return;
+            e.preventDefault();
 
-            const x = Math.min(dragState.startX, currX);
-            const y = Math.min(dragState.startY, currY);
-            const width = Math.abs(currX - dragState.startX);
-            const height = Math.abs(currY - dragState.startY);
+            // Use containerRef for coordinate calculation
+            const containerRect = containerRef.current.getBoundingClientRect();
 
-            setTempRect({ x, y, width, height });
-        }
-        else if (dragState.mode === 'move' && dragState.startRect) {
-            const dx = (e.clientX - dragState.startX) / scale;
-            const dy = (e.clientY - dragState.startY) / scale;
+            if (dragState.mode === 'create') {
+                const currX = e.clientX - containerRect.left;
+                const currY = e.clientY - containerRect.top;
 
-            onChange({
-                ...dragState.startRect,
-                x: dragState.startRect.x + dx,
-                y: dragState.startRect.y + dy
-            });
-        }
-        else if (dragState.mode === 'resize' && dragState.startRect) {
-            const dx = (e.clientX - dragState.startX) / scale;
-            const dy = (e.clientY - dragState.startY) / scale;
+                const x = Math.min(dragState.startX, currX);
+                const y = Math.min(dragState.startY, currY);
+                const width = Math.abs(currX - dragState.startX);
+                const height = Math.abs(currY - dragState.startY);
 
-            const r = { ...dragState.startRect };
-
-            if (dragState.handle?.includes('e')) r.width += dx;
-            if (dragState.handle?.includes('s')) r.height += dy;
-            if (dragState.handle?.includes('w')) {
-                r.x += dx;
-                r.width -= dx;
+                setTempRect({ x, y, width, height });
             }
-            if (dragState.handle?.includes('n')) {
-                r.y += dy;
-                r.height -= dy;
+            else if (dragState.mode === 'move' && dragState.startRect) {
+                const dx = (e.clientX - dragState.startX) / scale;
+                const dy = (e.clientY - dragState.startY) / scale;
+
+                onChange({
+                    ...dragState.startRect,
+                    x: dragState.startRect.x + dx,
+                    y: dragState.startRect.y + dy
+                });
             }
+            else if (dragState.mode === 'resize' && dragState.startRect) {
+                const dx = (e.clientX - dragState.startX) / scale;
+                const dy = (e.clientY - dragState.startY) / scale;
 
-            if (r.width < 0) { r.x += r.width; r.width = -r.width; }
-            if (r.height < 0) { r.y += r.height; r.height = -r.height; }
+                const r = { ...dragState.startRect };
 
-            onChange(r);
-        }
-    };
+                if (dragState.handle?.includes('e')) r.width += dx;
+                if (dragState.handle?.includes('s')) r.height += dy;
+                if (dragState.handle?.includes('w')) {
+                    r.x += dx;
+                    r.width -= dx;
+                }
+                if (dragState.handle?.includes('n')) {
+                    r.y += dy;
+                    r.height -= dy;
+                }
 
-    const handleMouseUp = () => {
-        if (!isActive || !dragState) return;
+                if (r.width < 0) { r.x += r.width; r.width = -r.width; }
+                if (r.height < 0) { r.y += r.height; r.height = -r.height; }
 
-        if (dragState.mode === 'create' && tempRect) {
-            if (tempRect.width > 5 && tempRect.height > 5) {
-                onChange(toPdf(tempRect));
+                onChange(r);
             }
-            setTempRect(null);
-        }
+        };
 
-        setDragState(null);
-    };
+        const handleGlobalMouseUp = () => {
+            if (dragState.mode === 'create' && tempRect) {
+                if (tempRect.width > 5 && tempRect.height > 5) {
+                    onChange(toPdf(tempRect));
+                }
+                setTempRect(null);
+            }
+            setDragState(null);
+        };
+
+        window.addEventListener('mousemove', handleGlobalMouseMove);
+        window.addEventListener('mouseup', handleGlobalMouseUp);
+
+        return () => {
+            window.removeEventListener('mousemove', handleGlobalMouseMove);
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+        };
+    }, [dragState, isActive, scale, tempRect, onChange]); // Note: tempRect dependency for mouseUp check, ensuring we capture latest state if needed, though mostly relying on closure or state updates
 
     const screenRect = rect ? toScreen(rect) : null;
 
@@ -175,9 +186,6 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                 cursor: dragState?.mode === 'create' ? 'crosshair' : 'default',
             }}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
         >
             {/* Existing Selection Box */}
             {screenRect && (
@@ -204,9 +212,11 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                             onMouseDown={(e) => handleHandleMouseDown(e, h)}
                             style={{
                                 position: 'absolute',
-                                width: 8, height: 8,
-                                background: '#fff',
-                                border: '1px solid #2563eb',
+                                width: 10, height: 10,
+                                background: 'white',
+                                border: '2px solid #2563eb',
+                                borderRadius: '50%',
+                                boxShadow: '0 0 2px rgba(0,0,0,0.2)',
                                 [h.includes('n') ? 'top' : 'bottom']: -4,
                                 [h.includes('w') ? 'left' : 'right']: -4,
                                 cursor: `${h}-resize`,
