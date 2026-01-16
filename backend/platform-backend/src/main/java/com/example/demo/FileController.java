@@ -216,7 +216,7 @@ public class FileController {
 
     @PostMapping("/api/files/{id}/coordinates")
     public ResponseEntity<?> updateCoordinates(@org.springframework.web.bind.annotation.PathVariable Long id,
-            @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Double> coords,
+            @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Object> coords,
             @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
         try {
             if (token == null || !token.startsWith("Bearer ")) {
@@ -234,14 +234,15 @@ public class FileController {
                 return ResponseEntity.status(403).body("Forbidden");
             }
 
-            if (coords.containsKey("x"))
-                file.setTitleX(coords.get("x"));
-            if (coords.containsKey("y"))
-                file.setTitleY(coords.get("y"));
-            if (coords.containsKey("width"))
-                file.setTitleWidth(coords.get("width"));
-            if (coords.containsKey("height"))
-                file.setTitleHeight(coords.get("height"));
+            // 1. Save Full JSON Coordinates
+            if (coords.containsKey("coordinates")) {
+                Object coordObj = coords.get("coordinates");
+                if (coordObj instanceof String) {
+                    file.setCoordinates((String) coordObj);
+                } else {
+                    file.setCoordinates(coordObj.toString());
+                }
+            }
 
             userFileRepository.save(file);
 

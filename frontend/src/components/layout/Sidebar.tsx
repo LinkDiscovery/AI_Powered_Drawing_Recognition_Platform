@@ -1,7 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const Sidebar = () => {
+export type ToolType = 'none' | 'title' | 'front' | 'side' | 'plan';
+
+interface SidebarProps {
+    activeTool?: ToolType;
+    onToolChange?: (tool: ToolType) => void;
+}
+
+const Sidebar = ({ activeTool, onToolChange }: SidebarProps) => {
     const navigate = useNavigate();
 
     return (
@@ -14,12 +21,49 @@ const Sidebar = () => {
             </div>
 
             <nav style={styles.nav}>
-                <NavItem icon="🗜️" label="압축" />
-                <NavItem icon="🔄" label="변환" active />
-                <NavItem icon="🧱" label="병합" />
-                <NavItem icon="✂️" label="편집" />
-                <NavItem icon="✍️" label="서명" />
-                <NavItem icon="🤖" label="AI PDF" />
+                {/* Hide generic tools if we are in specific Tool Mode (onToolChange is present) */}
+                {!onToolChange && (
+                    <>
+                        <NavItem icon="🗜️" label="압축" />
+                        <NavItem icon="🔄" label="변환" active={true} />
+                        <NavItem icon="🧱" label="병합" />
+                        <NavItem icon="✂️" label="편집" />
+                        <NavItem icon="✍️" label="서명" />
+                    </>
+                )}
+
+                {/* If onToolChange is present, we are in Preview Mode with Tools */}
+                {onToolChange ? (
+                    <>
+                        <div style={{ width: '80%', height: 1, background: 'rgba(255,255,255,0.1)', margin: '8px 0' }} />
+                        <NavItem
+                            icon="🟦"
+                            label="표제란"
+                            active={activeTool === 'title'}
+                            onClick={() => onToolChange('title')}
+                        />
+                        <NavItem
+                            icon="🟥"
+                            label="정면도"
+                            active={activeTool === 'front'}
+                            onClick={() => onToolChange('front')}
+                        />
+                        <NavItem
+                            icon="🟩"
+                            label="측면도"
+                            active={activeTool === 'side'}
+                            onClick={() => onToolChange('side')}
+                        />
+                        <NavItem
+                            icon="🟧"
+                            label="평면도"
+                            active={activeTool === 'plan'}
+                            onClick={() => onToolChange('plan')}
+                        />
+                    </>
+                ) : (
+                    <NavItem icon="🤖" label="AI PDF" />
+                )}
             </nav>
 
             <div style={styles.bottom}>
@@ -30,8 +74,11 @@ const Sidebar = () => {
     );
 };
 
-const NavItem = ({ icon, label, active = false }: { icon: string; label: string; active?: boolean }) => (
-    <div style={{ ...styles.item, ...(active ? styles.activeItem : {}) }}>
+const NavItem = ({ icon, label, active = false, onClick }: { icon: string; label: string; active?: boolean; onClick?: () => void }) => (
+    <div
+        style={{ ...styles.item, ...(active ? styles.activeItem : {}) }}
+        onClick={onClick}
+    >
         <div style={styles.icon}>{icon}</div>
         <div style={styles.label}>{label}</div>
     </div>

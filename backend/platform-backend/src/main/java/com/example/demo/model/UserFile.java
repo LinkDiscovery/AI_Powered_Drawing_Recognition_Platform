@@ -37,6 +37,9 @@ public class UserFile {
     @Column(nullable = true)
     private Double titleHeight;
 
+    @Column(columnDefinition = "TEXT")
+    private String coordinates;
+
     public UserFile() {
         this.uploadTime = LocalDateTime.now();
     }
@@ -120,5 +123,13 @@ public class UserFile {
 
     public void setTitleHeight(Double titleHeight) {
         this.titleHeight = titleHeight;
+    }
+
+    public String getCoordinates() {
+        return coordinates;
+    }
+
+    public void setCoordinates(String coordinates) {
+        this.coordinates = coordinates;
     }
 }

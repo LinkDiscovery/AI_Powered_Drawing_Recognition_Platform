@@ -298,7 +298,7 @@ export default function UserDashboard() {
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>파일 이름</th>
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>크기</th>
                                 <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>업로드 일시</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#555' }}>작업</th>
+                                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#555' }}></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -328,36 +328,37 @@ export default function UserDashboard() {
                                     <td style={{ padding: '12px 16px', color: '#666' }}>
                                         {new Date(file.uploadTime).toLocaleString()}
                                     </td>
-                                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                        <button
-                                            onClick={() => handleDownload(file)}
-                                            style={{
-                                                padding: '6px 12px',
-                                                borderRadius: '4px',
-                                                border: '1px solid #ddd',
-                                                background: 'white',
-                                                color: '#666',
-                                                cursor: 'pointer',
-                                                fontSize: '12px',
-                                                marginRight: '8px'
-                                            }}
-                                        >
-                                            다운로드
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(file.id)}
-                                            style={{
-                                                padding: '6px 12px',
-                                                borderRadius: '4px',
-                                                border: '1px solid #ff4d4f',
-                                                background: 'white',
-                                                color: '#ff4d4f',
-                                                cursor: 'pointer',
-                                                fontSize: '12px'
-                                            }}
-                                        >
-                                            삭제
-                                        </button>
+                                    <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleDownload(file)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #ddd',
+                                                    background: 'white',
+                                                    color: '#666',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px'
+                                                }}
+                                            >
+                                                다운로드
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(file.id)}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '4px',
+                                                    border: '1px solid #ff4d4f',
+                                                    background: 'white',
+                                                    color: '#ff4d4f',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px'
+                                                }}
+                                            >
+                                                삭제
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
