@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SelectionOverlay from './SelectionOverlay';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 // pdf.js 라이브러리 import (PDF 로드/페이지 렌더링)
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -67,6 +68,8 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
   // ✅ 에러 메시지(있으면 화면에 표시)
   const [error, setError] = useState('');
   const { showToast } = useToast();
+  // ✅ 로그인 상태 확인
+  const { isAuthenticated, openLoginModal } = useAuth();
 
   // ✅ 표제란 선택 모드
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -271,41 +274,115 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
   // 다음 페이지로 갈 수 있는지(문서가 있고 page<pageCount)
   const canNext = !!pdf && pageCount > 0 && page < pageCount;
 
-  // 확대: scale을 0.1 단위로 올리되 최대 4배 제한(소수점 한자리로 정리)
-  function zoomIn() {
-    setScale((s) => Math.min(4, Math.round((s + 0.1) * 10) / 10));
-  }
-  // 축소: scale을 0.1 단위로 내리되 최소 0.4배 제한(소수점 한자리로 정리)
-  function zoomOut() {
-    setScale((s) => Math.max(0.4, Math.round((s - 0.1) * 10) / 10));
-  }
+  // ✅ 자동 맞춤 모드 상태 (기본값 true)
+  const [isAutoFit, setIsAutoFit] = useState(true);
 
-  // ✅ 전체 화면(최대화) 모드 상태
-  const [isMaximized, setIsMaximized] = useState(false);
+  // 컨테이너 폭에 맞춤 (ResizeObserver 등에서 호출됨)
+  const fitWidth = async (force = false) => {
+    // force가 false이고 자동 맞춤 모드가 아니면 실행 안 함 (사용자가 조정한 비율 유지)
+    if (!force && !isAutoFit) return;
 
-  // 컨테이너 폭에 맞춤
-  async function fitWidth() {
     if (!pdf && !imageObj) return;
     try {
-      let width = 0;
+      let contentWidth = 0;
       if (imageObj) {
-        width = imageObj.naturalWidth;
+        contentWidth = imageObj.naturalWidth;
       } else if (pdf) {
         const pageObj = await pdf.getPage(page);
         const viewport = pageObj.getViewport({ scale: 1.0 });
-        width = viewport.width;
+        contentWidth = viewport.width;
       }
 
-      const containerWidth = canvasRef.current?.parentElement?.clientWidth || 0;
-      if (containerWidth > 0 && width > 0) {
+      // canvasRef.current -> wrapper -> scrollContainer
+      const scrollContainer = canvasRef.current?.parentElement?.parentElement;
+      if (!scrollContainer) return;
+
+      const containerWidth = scrollContainer.clientWidth;
+
+      if (containerWidth > 0 && contentWidth > 0) {
         // 여백(padding) 등 고려하여 약간 작게 잡음
-        const newScale = (containerWidth - 40) / width;
-        setScale(Math.floor(newScale * 10) / 10);
+        const newScale = (containerWidth - 40) / contentWidth;
+        // ✅ 0이 되거나 무한히 작아지는 것 방지 (최소 0.1, 최대 4.0)
+        const safeScale = Math.min(Math.max(newScale, 0.1), 4.0);
+
+        setScale(Math.floor(safeScale * 100) / 100);
       }
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // ✅ 문서가 새로 로드되면 자동 맞춤 모드를 켜고 크기 조절
+  useEffect(() => {
+    if (pdf || imageObj) {
+      setIsAutoFit(true);
+      // 상태 업데이트 반영을 위해 약간의 지연 후 실행하거나, 여기서 직접 호출할 때 force=true 사용
+      // 하지만 isAutoFit state update는 비동기일 수 있으므로, 
+      // 아래의 effect에서 isAutoFit이 true로 바뀐 건지 확인하기보다는
+      // 그냥 로직 분리: "문서 변경 시 무조건 Fit"
+
+      // 여기서는 state만 true로 만들고, 실제 사이징은 별도 effect나 함수 직접 호출로 처리
+      // 다만 fitWidth 내부에서 isAutoFit을 참조하므로(closure), useEffect 의존성 관리 필요.
+      // 간단하게는: 문서 로드 시점에는 무조건 한 번 맞춤 계산 수행
+    }
+  }, [pdf, imageObj]);
+
+  // ✅ 문서 로드 및 리사이즈 시 자동으로 너비 맞춤 실행
+  useEffect(() => {
+    if (!pdf && !imageObj) return;
+
+    // 문서가 바뀌었거나(page 변경 포함), 리사이즈 발생 시 수행
+    // 단, fitWidth 내부에서 isAutoFit 체크함.
+
+    // 1. 즉시 실행 시도 (문서 로드 직후라면 isAutoFit을 true로 간주하고 싶지만 state closure 문제)
+    // -> 해결: 문서 로드 시점(위 useEffect)에서 실행하지 말고, 여기서 통합 관리하되
+    //    page/pdf/imageObj가 바뀌면 "초기화" 개념으로 봐야할지 결정.
+    //    사용자가 "페이지 넘김"을 했을 때도 fitWidth가 유지되어야 하면 isAutoFit 체크가 맞음.
+    //    만약 새 파일이 열리면? -> 위 useEffect에서 setIsAutoFit(true) 했으므로 OK.
+
+    fitWidth();
+
+    // 2. 약간의 지연
+    const timer = setTimeout(() => fitWidth(), 100);
+
+    // 3. ResizeObserver
+    const scrollContainer = canvasRef.current?.parentElement?.parentElement;
+    let observer: ResizeObserver | null = null;
+
+    if (scrollContainer) {
+      observer = new ResizeObserver(() => {
+        fitWidth();
+      });
+      observer.observe(scrollContainer);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      observer?.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf, imageObj, page, isAutoFit]); // isAutoFit이 바뀌면(true가 되면) 재계산 시도
+
+  // 확대: 사용자가 개입했으므로 자동 맞춤 끔
+  function zoomIn() {
+    setIsAutoFit(false);
+    setScale((s) => Math.min(4, Math.round((s + 0.1) * 10) / 10));
   }
+  // 축소: 사용자가 개입했으므로 자동 맞춤 끔
+  function zoomOut() {
+    setIsAutoFit(false);
+    setScale((s) => Math.max(0.1, Math.round((s - 0.1) * 10) / 10));
+  }
+
+
+  // ✅ 전체 화면(최대화) 모드 상태
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  // 자동 맞춤 클릭 시 강제로 실행
+  const handleFitWidth = () => {
+    setIsAutoFit(true);
+    fitWidth(true);
+  };
 
   // JSX 반환(렌더링)
   // 최대화 모드일 때와 아닐 때의 스타일 분기
@@ -429,7 +506,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
         {/* Action Buttons: Fit Width, Rotate, Maximize */}
         <div style={{ display: 'flex', gap: 2 }}>
           <button
-            onClick={fitWidth}
+            onClick={handleFitWidth}
             disabled={!pdf && !imageObj}
             style={{
               ...iconBtnStyle,
@@ -437,12 +514,13 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
               padding: '6px 12px',
               gap: 4,
               flexDirection: 'column',
-              height: 'auto'
+              height: 'auto',
+              color: isAutoFit ? '#2563eb' : '#444'
             }}
             title="폭 맞춤"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#666' }}>폭 맞춤</span>
+            <span style={{ fontSize: 11, fontWeight: 500 }}>폭 맞춤</span>
           </button>
 
           <button
@@ -489,6 +567,11 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
         {/* Title Block Selection Toggle */}
         <button
           onClick={() => {
+            if (!isAuthenticated) {
+              showToast('로그인 후 이용할 수 있는 기능입니다.', 'error');
+              openLoginModal();
+              return;
+            }
             setIsSelectionMode(!isSelectionMode);
             setSelectedRect(null); // Reset selection when toggling
           }}
@@ -532,10 +615,16 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
           </div>
           <button
             onClick={() => {
+              if (!isAuthenticated) {
+                showToast('로그인 후 이용할 수 있는 기능입니다.', 'error');
+                openLoginModal();
+                return;
+              }
+
               if (onSaveSelection && selectedRect) {
                 onSaveSelection(selectedRect);
               } else {
-                showToast(`저장되었습니다! (좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
+                showToast(`저장되었습니다!(좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
               }
             }}
             style={{

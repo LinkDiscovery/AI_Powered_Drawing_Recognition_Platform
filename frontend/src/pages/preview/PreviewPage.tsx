@@ -118,8 +118,8 @@ export default function PreviewPage() {
 const styles: Record<string, React.CSSProperties> = {
     appShell: {
         display: 'flex',
-        height: '100vh',
-        width: '100vw',
+        height: 'calc(100vh - 60px)',
+        width: '100%',
         overflow: 'hidden',
         background: '#f7f9fc'
     },

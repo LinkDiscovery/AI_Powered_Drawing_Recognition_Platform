@@ -223,12 +223,9 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
   },
 
   primaryTabs: [
-    { id: 'tab-compress', label: '압축', href: '/kr/compress-pdf', className: 'hide-below-1000' },
-    { id: 'tab-convert', label: '변환하기', href: '/kr/pdf-converter', className: 'hide-below-1100' },
-    { id: 'tab-merge', label: '병합', href: '/kr/merge-pdf', className: 'hide-below-800' },
-    { id: 'tab-edit', label: '편집', href: '/kr/edit-pdf', className: 'hide-below-900' },
-    { id: 'tab-sign', label: '서명', href: '/kr/sign-pdf', className: 'hide-below-900' },
-    { id: 'tab-ai', label: 'AI PDF', href: '/kr/ai-pdf', className: 'hide-below-800' },
+    { id: 'tab-upload', label: '파일 업로드', href: '/upload' },
+    { id: 'tab-preview', label: '미리보기', href: '/preview' },
+    { id: 'tab-dashboard', label: '데이터 확인 및 수정', href: '/dashboard' },
   ],
 
   rightLinks: [
