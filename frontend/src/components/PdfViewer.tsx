@@ -75,6 +75,39 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedRect, setSelectedRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
 
+  // ✅ Banner Drag State
+  const [bannerPos, setBannerPos] = useState({ x: 0, y: 60 }); // Initial Offset
+  const isDraggingBanner = useRef(false);
+  const bannerDragStart = useRef({ x: 0, y: 0 });
+
+  // Banner Drag Logic
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingBanner.current) return;
+      e.preventDefault();
+      const dx = e.clientX - bannerDragStart.current.x;
+      const dy = e.clientY - bannerDragStart.current.y;
+
+      bannerDragStart.current = { x: e.clientX, y: e.clientY };
+
+      setBannerPos(prev => ({
+        x: prev.x + dx,
+        y: prev.y + dy
+      }));
+    };
+
+    const handleMouseUp = () => {
+      isDraggingBanner.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   // ✅ ESC key listener to exit selection mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -751,25 +784,34 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
       >
         {/* Instructional Banner for Selection Mode */}
         {isSelectionMode && (
-          <div style={{
-            position: 'sticky',
-            top: 10,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 100,
-            background: 'rgba(33, 33, 33, 0.9)',
-            backdropFilter: 'blur(4px)',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: 30,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 16,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            fontSize: 13,
-            width: 'fit-content',
-            maxWidth: '90%'
-          }}>
+          <div
+            onMouseDown={(e) => {
+              // Only start drag if not clicking buttons
+              if ((e.target as HTMLElement).tagName.toLowerCase() === 'button') return;
+              isDraggingBanner.current = true;
+              bannerDragStart.current = { x: e.clientX, y: e.clientY };
+            }}
+            style={{
+              position: 'fixed', // Changed from sticky to fixed
+              top: 20,
+              left: '50%',
+              transform: `translate(calc(-50% + ${bannerPos.x}px), ${bannerPos.y}px)`, // Apply drag offset
+              zIndex: 9999, // High z-index
+              background: 'rgba(33, 33, 33, 0.95)',
+              backdropFilter: 'blur(4px)',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: 30,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              fontSize: 13,
+              width: 'fit-content',
+              maxWidth: '90%',
+              cursor: 'move', // Indicate draggable
+              userSelect: 'none'
+            }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><path d="M9 3v18" /><path d="M3 9h18" /></svg>
               <span>마우스로 표제란 영역을 드래그하여 지정하세요.</span>

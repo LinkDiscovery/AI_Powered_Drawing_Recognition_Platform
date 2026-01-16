@@ -197,22 +197,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
 
             if (!response.ok) {
-                throw new Error('Refresh failed');
+                // throw new Error('Refresh failed');
+                // Silent fail if refresh fails (maybe network blip), don't logout immediately unless 401
+                if (response.status === 401) throw new Error('Unauthorized');
+                return;
             }
 
             const data = await response.json();
-            // Update token and expiry, keep user info.
             if (user && data.token) {
                 saveUser(user, data.token);
-                // Force reload or just alert?
-                showToast("로그인 시간이 갱신되었습니다.", 'success');
+                // console.log("Session refreshed"); 
             }
         } catch (error) {
             console.error("Session refresh failed", error);
-            showToast("세션 갱신에 실패했습니다. 다시 로그인해주세요.", 'error');
-            logout();
+            // logout(); // Only logout if we determine it's fatal
         }
     };
+
+    // Activity Listener for Sliding Session
+    useEffect(() => {
+        if (!user) return;
+
+        let lastActivity = Date.now();
+        let lastRefresh = Date.now();
+        const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh at most every 5 minutes
+
+        const handleActivity = () => {
+            const now = Date.now();
+            // Throttle: Only consider activity if 1 second passed
+            if (now - lastActivity < 1000) return;
+            lastActivity = now;
+
+            // Check if we should refresh
+            if (now - lastRefresh > REFRESH_INTERVAL) {
+                lastRefresh = now;
+                refreshSession();
+            }
+        };
+
+        window.addEventListener('mousemove', handleActivity);
+        window.addEventListener('keydown', handleActivity);
+        window.addEventListener('click', handleActivity);
+
+        return () => {
+            window.removeEventListener('mousemove', handleActivity);
+            window.removeEventListener('keydown', handleActivity);
+            window.removeEventListener('click', handleActivity);
+        };
+    }, [user]);
 
     const navigate = useNavigate();
 

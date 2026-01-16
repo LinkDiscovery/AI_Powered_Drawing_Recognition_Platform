@@ -48,6 +48,7 @@ interface FileContextType {
     canGoPreview: boolean;
     claimFile: (dbId: number) => Promise<void>;
     openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }) => void;
+    updateItemSelection: (id: string, selection: { x: number, y: number, width: number, height: number } | null | undefined) => void;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -249,6 +250,16 @@ export function FileProvider({ children }: { children: ReactNode }) {
         setSelectedId(id);
     }
 
+    function updateItemSelection(id: string, selection: { x: number, y: number, width: number, height: number } | null | undefined) {
+        setItems((prev) =>
+            prev.map((x) => {
+                if (x.id !== id) return x;
+                return { ...x, initialSelection: selection || undefined };
+            })
+        );
+        // Also update activeItem indirectly because it depends on items
+    }
+
     const value = {
         items,
         addFiles,
@@ -259,7 +270,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         hasItems,
         canGoPreview,
         claimFile,
-        openSingleFile
+        openSingleFile,
+        updateItemSelection
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

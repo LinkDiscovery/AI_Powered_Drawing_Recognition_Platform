@@ -8,9 +8,9 @@ import { useAuth } from '../../context/AuthContext';
 export default function PreviewPage() {
     const navigate = useNavigate();
     const { token } = useAuth();
-    const { activeItem, selectedId, hasItems } = useFiles();
+    const { activeItem, selectedId, hasItems, updateItemSelection } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
-    const [savedRect, setSavedRect] = useState(activeItem?.initialSelection);
+    const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
 
     // activeItem changes, update savedRect
     useEffect(() => {
@@ -173,6 +173,7 @@ export default function PreviewPage() {
 
                                             if (res.ok) {
                                                 setSavedRect(rect); // Can be null
+                                                updateItemSelection(activeItem.id, rect);
                                                 alert(rect ? '표제란 영역이 저장되었습니다.' : '표제란 설정이 삭제되었습니다.');
                                             } else {
                                                 const txt = await res.text();
