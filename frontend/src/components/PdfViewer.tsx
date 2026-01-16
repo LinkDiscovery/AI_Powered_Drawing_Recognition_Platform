@@ -363,17 +363,98 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdf, imageObj, page, isAutoFit]); // isAutoFit이 바뀌면(true가 되면) 재계산 시도
 
+  // ✅ Scrubby Zoom (Ctrl + Mouse Drag)
+  const isDraggingZoom = useRef(false);
+  const lastMouseY = useRef(0);
+
+  // 캔버스 컨테이너에서 마우스 다운 시 시작
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.ctrlKey) {
+      isDraggingZoom.current = true;
+      lastMouseY.current = e.clientY;
+      e.preventDefault();
+      document.body.style.cursor = 'ns-resize';
+    }
+  };
+
+  // 전역 마우스 이벤트로 드래그 처리
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingZoom.current) return;
+
+      const deltaY = lastMouseY.current - e.clientY;
+      lastMouseY.current = e.clientY;
+
+      // Drag up = Zoom In, Drag down = Zoom Out
+      // 감도 조절
+      const factor = 0.01;
+
+      if (deltaY !== 0) {
+        setIsAutoFit(false);
+        // setScale functional update
+        setScale(prev => {
+          const next = prev + (deltaY * factor);
+          // 10% ~ 500%
+          return Math.min(5.0, Math.max(0.1, next));
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingZoom.current) {
+        isDraggingZoom.current = false;
+        document.body.style.cursor = '';
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  // ✅ Zoom Step State (1% or 10%)
+  const [zoomStep, setZoomStep] = useState<1 | 10>(10);
+
   // 확대: 사용자가 개입했으므로 자동 맞춤 끔
   function zoomIn() {
     setIsAutoFit(false);
-    setScale((s) => Math.min(4, Math.round((s + 0.1) * 10) / 10));
+    setScale((s) => Math.min(5.0, Math.round((s + (zoomStep / 100)) * 100) / 100));
   }
   // 축소: 사용자가 개입했으므로 자동 맞춤 끔
   function zoomOut() {
     setIsAutoFit(false);
-    setScale((s) => Math.max(0.1, Math.round((s - 0.1) * 10) / 10));
+    setScale((s) => Math.max(0.1, Math.round((s - (zoomStep / 100)) * 100) / 100));
   }
 
+  // ✅ 줌 입력 관리 상태
+  const [zoomInput, setZoomInput] = useState('');
+
+  // scale이 변경되면 입력창 값도 동기화 (단, 포커스 상태가 아닐 때만 업데이트하면 좋겠지만, 
+  // 여기서는 간단히 scale 변경 시마다 업데이트하되, 사용자가 타이핑 중에는 영향 없도록 처리 필요.
+  // -> onBlur/Enter로만 커밋하는 '비제어/반제어' 방식 사용)
+
+  // scale이 외부(버튼 등)에서 바뀌었을 때 input 업데이트
+  useEffect(() => {
+    setZoomInput(Math.round(scale * 100).toString());
+  }, [scale]);
+
+  const handleZoomInputCommit = () => {
+    let val = parseFloat(zoomInput);
+    if (Number.isNaN(val)) {
+      // 잘못된 값이면 현재 scale로 복구
+      setZoomInput(Math.round(scale * 100).toString());
+      return;
+    }
+    // 범위 제한 (10% ~ 500%)
+    val = Math.max(10, Math.min(500, val));
+
+    setIsAutoFit(false);
+    setScale(val / 100);
+    setZoomInput(val.toString());
+  };
 
   // ✅ 전체 화면(최대화) 모드 상태
   const [isMaximized, setIsMaximized] = useState(false);
@@ -414,7 +495,6 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
 
   return (
     <div style={containerStyle}>
-      {/* 상단 정보/컨트롤 바 */}
       {/* 상단 정보/컨트롤 바 */}
       <div
         style={{
@@ -488,12 +568,57 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
 
         {/* Zoom Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Zoom Step Toggle */}
+          <button
+            onClick={() => setZoomStep(prev => prev === 1 ? 10 : 1)}
+            style={{
+              ...iconBtnStyle,
+              width: 'auto',
+              fontSize: 11,
+              padding: '2px 6px',
+              marginRight: 4,
+              color: '#2563eb',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe'
+            }}
+            title="클릭하여 줌 단위 변경"
+          >
+            {zoomStep}%단위
+          </button>
+
           <button onClick={zoomOut} disabled={!pdf && !imageObj} style={iconBtnStyle} title="축소">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
           </button>
-          <div style={{ fontSize: 13, minWidth: 44, textAlign: 'center', fontWeight: 500 }}>
-            {Math.round(scale * 100)}%
+
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              value={zoomInput}
+              onChange={(e) => setZoomInput(e.target.value)}
+              onBlur={handleZoomInputCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleZoomInputCommit();
+                  (e.target as HTMLInputElement).blur();
+                }
+              }}
+              disabled={!pdf && !imageObj}
+              style={{
+                width: 46,
+                textAlign: 'right',
+                border: '1px solid #ddd',
+                borderRadius: 4,
+                background: '#f9f9f9',
+                fontWeight: 500,
+                fontSize: 13,
+                outline: 'none',
+                padding: '2px 4px',
+                marginRight: 2,
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)'
+              }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 500, marginRight: 2, color: '#666' }}>%</span>
           </div>
+
           <button onClick={zoomIn} disabled={!pdf && !imageObj} style={iconBtnStyle} title="확대">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="11" y1="8" x2="11" y2="14" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
           </button>
@@ -599,52 +724,59 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
       </div>
 
       {/* 상태 표시 */}
-      {(loadingDoc || rendering) && (
-        <div style={{ fontSize: 12, color: '#555', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
-          {loadingDoc ? 'PDF 로딩 중…' : '페이지 렌더링 중…'}
-        </div>
-      )}
+      {
+        (loadingDoc || rendering) && (
+          <div style={{ fontSize: 12, color: '#555', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+            {loadingDoc ? 'PDF 로딩 중…' : '페이지 렌더링 중…'}
+          </div>
+        )
+      }
       {error && <div style={{ color: 'crimson', fontSize: 12, paddingLeft: 4 }}>{error}</div>}
 
       {/* Selected Rect Info and Save Button */}
-      {selectedRect && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 4, marginTop: -4, marginBottom: 8 }}>
-          <div style={{ fontSize: 12, color: '#2563eb' }}>
-            선택됨: x={selectedRect?.x?.toFixed(0)}, y={selectedRect?.y?.toFixed(0)}, w={selectedRect?.width?.toFixed(0)}, h={selectedRect?.height?.toFixed(0)}
-          </div>
-          <button
-            onClick={() => {
-              if (!isAuthenticated) {
-                showToast('로그인 후 이용할 수 있는 기능입니다.', 'error');
-                openLoginModal();
-                return;
-              }
+      {
+        selectedRect && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 4, marginTop: -4, marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: '#2563eb' }}>
+              선택됨: x={selectedRect?.x?.toFixed(0)}, y={selectedRect?.y?.toFixed(0)}, w={selectedRect?.width?.toFixed(0)}, h={selectedRect?.height?.toFixed(0)}
+            </div>
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  showToast('로그인 후 이용할 수 있는 기능입니다.', 'error');
+                  openLoginModal();
+                  return;
+                }
 
-              if (onSaveSelection && selectedRect) {
-                onSaveSelection(selectedRect);
-              } else {
-                showToast(`저장되었습니다!(좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
-              }
-            }}
-            style={{
-              background: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              padding: '4px 8px',
-              fontSize: 12,
-              cursor: 'pointer',
-              fontWeight: 600
-            }}
-          >
-            선택 영역 저장
-          </button>
-        </div>
-      )}
+                if (onSaveSelection && selectedRect) {
+                  onSaveSelection(selectedRect);
+                } else {
+                  showToast(`저장되었습니다!(좌표: ${selectedRect.x.toFixed(0)}, ${selectedRect.y.toFixed(0)})`, 'success');
+                }
+              }}
+              style={{
+                background: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                padding: '4px 8px',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              선택 영역 저장
+            </button>
+          </div>
+        )
+      }
 
       {/* 캔버스 영역 */}
-      <div style={{ ...canvasContainerStyle, position: 'relative' }}>
+      <div
+        style={{ ...canvasContainerStyle, position: 'relative' }}
+        onMouseDown={handleMouseDown}
+      >
         <div style={{ position: 'relative', width: 'fit-content', margin: '0 auto' }}>
           <canvas
             ref={canvasRef}
@@ -658,6 +790,6 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
           />
         </div>
       </div>
-    </div>
+    </div >
   );
 }

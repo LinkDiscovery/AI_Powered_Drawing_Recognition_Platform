@@ -1,9 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Sidebar = () => {
+    const navigate = useNavigate();
+
     return (
         <aside style={styles.sidebar}>
-            <div style={styles.logoItem}>
+            <div style={styles.logoItem} onClick={() => navigate('/')}>
                 <div style={styles.logoBox}>
                     {/* Small Logo or Icon */}
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M4 4h16v16H4z" /></svg>
