@@ -67,7 +67,7 @@ const Sidebar = ({ activeTool, onToolChange }: SidebarProps) => {
             </nav>
 
             <div style={styles.bottom}>
-                <NavItem icon="📂" label="문서" />
+                <NavItem icon="📂" label="문서" onClick={() => navigate('/dashboard')} />
                 <NavItem icon="👤" label="계정" />
             </div>
         </aside>
