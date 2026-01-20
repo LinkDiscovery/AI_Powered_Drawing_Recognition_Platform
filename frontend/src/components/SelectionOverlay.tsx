@@ -4,6 +4,7 @@ export interface BBox {
     id: string;
     type: 'title' | 'front' | 'side' | 'plan';
     rect: { x: number; y: number; width: number; height: number };
+    page?: number;
 }
 
 interface SelectionOverlayProps {

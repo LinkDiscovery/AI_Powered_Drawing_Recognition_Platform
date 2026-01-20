@@ -171,12 +171,12 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     if (file && initialBBoxes && initialBBoxes.length > 0) {
       setBBoxes(initialBBoxes);
     } else if (file && initialSelection) {
-      // Legacy path: initialSelection was usually passed from "My Page" without rotation context,
-      // currently assumed to be 0-degree safe or we just accept it.
+      // Legacy path: initialSelection usually assumes Page 1
       setBBoxes([{
         id: 'initial-title',
         type: 'title',
-        rect: initialSelection
+        rect: initialSelection,
+        page: 1
       }]);
     } else {
       setBBoxes([]);
@@ -414,23 +414,33 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     transition: 'all 0.2s',
   };
 
-  // Prepare Transformed BBoxes for View
+  // Prepare Transformed BBoxes for View (Filter by Page)
   const viewBBoxes = useMemo(() => {
     if (docDimensions.w === 0) return [];
-    return bboxes.map(b => ({
-      ...b,
-      rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, true)
-    }));
-  }, [bboxes, rotation, docDimensions]);
+    return bboxes
+      .filter(b => (b.page || 1) === page)
+      .map(b => ({
+        ...b,
+        rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, true)
+      }));
+  }, [bboxes, rotation, docDimensions, page]);
 
-  // Handle Box Changes from View (Convert back to 0-deg)
+  // Handle Box Changes from View (Convert back to 0-deg and Merge)
   const handleBBoxChange = (newViewBBoxes: BBox[]) => {
     if (docDimensions.w === 0) return;
-    const zeroBBoxes = newViewBBoxes.map(b => ({
+
+    // 1. Transform back to 0-deg and ensure Page ID
+    const currentCallbackBBoxes = newViewBBoxes.map(b => ({
       ...b,
-      rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, false)
+      rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, false),
+      page: page
     }));
-    setBBoxes(zeroBBoxes);
+
+    // 2. Merge with other pages
+    setBBoxes(prev => {
+      const otherPages = prev.filter(b => (b.page || 1) !== page);
+      return [...otherPages, ...currentCallbackBBoxes];
+    });
   };
 
   return (

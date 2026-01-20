@@ -428,6 +428,8 @@ public class FileController {
                         String type = (String) item.get("type");
                         String frontendId = (String) item.get("id");
                         Map<String, Number> rect = (Map<String, Number>) item.get("rect");
+                        Number pageNum = (Number) item.get("page");
+                        Integer page = (pageNum != null) ? pageNum.intValue() : 1;
 
                         if (type != null && rect != null) {
                             BBox bbox = new BBox();
@@ -438,6 +440,7 @@ public class FileController {
                             bbox.setY(rect.get("y").doubleValue());
                             bbox.setWidth(rect.get("width").doubleValue());
                             bbox.setHeight(rect.get("height").doubleValue());
+                            bbox.setPage(page);
 
                             file.getBboxes().add(bbox);
                         }

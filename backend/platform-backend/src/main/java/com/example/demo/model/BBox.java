@@ -35,16 +35,21 @@ public class BBox {
     // Optional frontend ID for reference if needed, but DB ID is primary
     private String frontendId;
 
+    @Column(columnDefinition = "integer default 1")
+    private Integer page = 1;
+
     public BBox() {
     }
 
-    public BBox(UserFile userFile, String type, Double x, Double y, Double width, Double height, String frontendId) {
+    public BBox(UserFile userFile, String type, Double x, Double y, Double width, Double height, Integer page,
+            String frontendId) {
         this.userFile = userFile;
         this.type = type;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.page = (page == null) ? 1 : page;
         this.frontendId = frontendId;
     }
 
@@ -108,5 +113,13 @@ public class BBox {
 
     public void setFrontendId(String frontendId) {
         this.frontendId = frontendId;
+    }
+
+    public Integer getPage() {
+        return page;
+    }
+
+    public void setPage(Integer page) {
+        this.page = page;
     }
 }
