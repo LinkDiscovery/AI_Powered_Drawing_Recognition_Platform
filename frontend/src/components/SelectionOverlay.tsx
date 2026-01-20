@@ -204,7 +204,12 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                 position: 'absolute',
                 top: 0, left: 0, right: 0, bottom: 0,
                 zIndex: 10,
+                // zIndex: 10 is already defined above
                 cursor: activeTool !== 'none' ? 'crosshair' : 'default',
+                // Visual cue for drawable area
+                border: activeTool !== 'none' ? `2px dashed ${TYPE_CONFIG[activeTool as keyof typeof TYPE_CONFIG]?.color || '#2563eb'}` : 'none',
+                backgroundColor: activeTool !== 'none' ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
+                boxShadow: activeTool !== 'none' ? `0 0 0 2px rgba(255, 255, 255, 0.5) inset` : 'none', // Inner white outline for contrast
             }}
             onMouseDown={handleMouseDown}
         >
