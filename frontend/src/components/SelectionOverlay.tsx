@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export interface BBox {
     id: string;
@@ -13,6 +13,11 @@ interface SelectionOverlayProps {
     scale: number;
     bboxes: BBox[];
     onChange: (bboxes: BBox[]) => void;
+    // New Props
+    selectedId?: string | null;
+    onSelect?: (id: string | null) => void;
+    onDelete?: (id: string) => void; // Explicit delete handler
+    onDoubleClick?: (id: string) => void; // New Double Click Handler
 }
 
 const TYPE_CONFIG = {
@@ -22,7 +27,7 @@ const TYPE_CONFIG = {
     plan: { label: '평면도', color: '#f9ab00', bg: 'rgba(249, 171, 0, 0.15)' },
 };
 
-export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, onChange }: SelectionOverlayProps) {
+export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, onChange, selectedId, onSelect, onDelete, onDoubleClick }: SelectionOverlayProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Interaction states
@@ -61,10 +66,16 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
         height: r.height / scale
     });
 
-    // Start CREATING a new box
+    // Start CREATING a new box OR Deselect
     const handleMouseDown = (e: React.MouseEvent) => {
-        if (!isActive || activeTool === 'none') return;
-        e.stopPropagation();
+        if (!isActive) return;
+
+        // If clicking empty space, deselect
+        if (e.target === containerRef.current) {
+            onSelect?.(null);
+        }
+
+        if (activeTool === 'none') return;
 
         const rect = e.currentTarget.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -78,10 +89,27 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
         setTempRect({ x: mouseX, y: mouseY, width: 0, height: 0 });
     };
 
+    const lastClickRef = useRef<{ id: string, time: number } | null>(null);
+
     // Start MOVING an existing box
     const handleBoxMouseDown = (e: React.MouseEvent, id: string, rect: { x: number, y: number, width: number, height: number }) => {
         if (!isActive) return;
         e.stopPropagation();
+
+        // Manual Double Click Detection
+        const now = Date.now();
+        if (lastClickRef.current && lastClickRef.current.id === id && (now - lastClickRef.current.time < 300)) {
+            onDoubleClick?.(id);
+            lastClickRef.current = null;
+            // Optional: Return here to prevent drag start on double click? 
+            // Letting drag start is fine, but maybe redundant. 
+            // Let's allow drag to start so "click-click-drag" works or just consistent feel.
+        } else {
+            lastClickRef.current = { id, time: now };
+        }
+
+        // Select logic
+        onSelect?.(id);
 
         setDragState({
             mode: 'move',
@@ -182,6 +210,8 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                         rect: toPdf(tempRect)
                     };
                     onChange([...bboxes, newBox]);
+                    // Auto select newly created box
+                    onSelect?.(newBox.id);
                 }
                 setTempRect(null);
             }
@@ -195,7 +225,7 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
             window.removeEventListener('mousemove', handleGlobalMouseMove);
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
-    }, [dragState, isActive, scale, tempRect, bboxes, onChange, activeTool]);
+    }, [dragState, isActive, scale, tempRect, bboxes, onChange, activeTool, onSelect]);
 
 
     return (
@@ -205,7 +235,6 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                 position: 'absolute',
                 top: 0, left: 0, right: 0, bottom: 0,
                 zIndex: 10,
-                // zIndex: 10 is already defined above
                 cursor: activeTool !== 'none' ? 'crosshair' : 'default',
                 // Visual cue for drawable area
                 border: activeTool !== 'none' ? `2px dashed ${TYPE_CONFIG[activeTool as keyof typeof TYPE_CONFIG]?.color || '#2563eb'}` : 'none',
@@ -218,7 +247,10 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
             {(bboxes || []).map(box => {
                 const screenRect = toScreen(box.rect);
                 const config = TYPE_CONFIG[box.type] || TYPE_CONFIG.title;
-                const isSelected = dragState?.targetId === box.id;
+                const isDragTarget = dragState?.targetId === box.id;
+                const isSelected = selectedId === box.id;
+                // Highlight if dragged OR selected
+                const highlight = isDragTarget || isSelected;
 
                 return (
                     <div
@@ -229,17 +261,19 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                             top: screenRect.y,
                             width: Math.abs(screenRect.width),
                             height: Math.abs(screenRect.height),
-                            border: `2px solid ${config.color}`,
+                            border: `2px solid ${highlight ? '#000' : config.color}`,
+                            boxShadow: highlight ? '0 0 0 2px rgba(255,255,255,0.8)' : 'none',
                             backgroundColor: config.bg,
                             cursor: 'move',
                             boxSizing: 'border-box',
                             pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto',
-                            zIndex: isSelected ? 20 : 11
+                            zIndex: highlight ? 20 : 11,
+                            transition: 'border-color 0.2s'
                         }}
                         onMouseDown={(e) => handleBoxMouseDown(e, box.id, box.rect)}
                     >
-                        {/* Resize Handles (Only show if not creating) */}
-                        {dragState?.mode !== 'create' && ['nw', 'ne', 'sw', 'se'].map(h => (
+                        {/* Resize Handles (Only show if Selected or Dragging) */}
+                        {highlight && dragState?.mode !== 'create' && ['nw', 'ne', 'sw', 'se'].map(h => (
                             <div
                                 key={h}
                                 onMouseDown={(e) => handleHandleMouseDown(e, box.id, box.rect, h)}
@@ -249,10 +283,11 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                                     background: 'white',
                                     border: `2px solid ${config.color}`,
                                     borderRadius: '50%',
-                                    [h.includes('n') ? 'top' : 'bottom']: -4,
-                                    [h.includes('w') ? 'left' : 'right']: -4,
+                                    [h.includes('n') ? 'top' : 'bottom']: -6,
+                                    [h.includes('w') ? 'left' : 'right']: -6,
                                     cursor: `${h}-resize`,
                                     zIndex: 2,
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                 }}
                             />
                         ))}
@@ -260,11 +295,12 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                         {/* Label Tag (with Delete Button) */}
                         <div style={{
                             position: 'absolute',
-                            top: -24,
+                            top: -26,
                             left: 0,
                             display: 'flex',
                             gap: 4,
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            zIndex: 3
                         }}>
                             <div style={{
                                 background: config.color,
@@ -273,27 +309,33 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
                                 padding: '2px 6px',
                                 borderRadius: 4,
                                 whiteSpace: 'nowrap',
-                                fontWeight: 600
+                                fontWeight: 600,
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                             }}>
                                 {config.label}
                             </div>
+                            {/* Always show delete on selected, or on hover? Keep it simple for now */}
                             <button
                                 style={{
                                     background: 'white',
                                     border: '1px solid #ddd',
                                     borderRadius: 4,
-                                    width: 18,
-                                    height: 18,
+                                    width: 20,
+                                    height: 20,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     cursor: 'pointer',
-                                    fontSize: 12,
-                                    color: '#666'
+                                    fontSize: 14,
+                                    color: '#666',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                                 }}
                                 onMouseDown={(e) => {
                                     e.stopPropagation(); // prevent drag start
-                                    onChange(bboxes.filter(b => b.id !== box.id));
+                                    // Local delete or parent delete?
+                                    // Use onDelete prop if available, else fallback
+                                    if (onDelete) onDelete(box.id);
+                                    else onChange(bboxes.filter(b => b.id !== box.id));
                                 }}
                                 title="삭제"
                             >
