@@ -200,16 +200,40 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
         // 여백(padding) 등 고려하여 약간 작게 잡음
         let calculatedScale = (container.clientWidth - 40) / w;
 
-        // Cap automatic scale to 1.5 to prevent too large zoom on start
-        if (!force && calculatedScale > 1.5) calculatedScale = 1.5;
+        // ✅ Smart Fit: 
+        // 1. 화면보다 크면 화면에 맞춤 (calculatedScale < 1)
+        // 2. 화면보다 작으면 굳이 늘리지 않고 100% 유지 (calculatedScale > 1 -> 1.0)
+        // 단, force=true(버튼 클릭 등)인 경우는 꽉 차게 늘림
+        const targetScale = force ? calculatedScale : Math.min(calculatedScale, 1.0);
 
         // ✅ 0이 되거나 무한히 작아지는 것 방지 (최소 0.1, 최대 4.0)
-        const activeScale = Math.floor(Math.min(Math.max(calculatedScale, 0.1), 4.0) * 100) / 100;
+        const activeScale = Math.floor(Math.min(Math.max(targetScale, 0.1), 4.0) * 100) / 100;
 
         setScale(prev => {
           if (Math.abs(prev - activeScale) < 0.02) return prev;
           return activeScale;
         });
+      }
+    } catch { }
+  };
+
+  // ✅ 높이 맞춤 (Page Fit)
+  const fitHeight = async () => {
+    if (!pdf && !imageObj) return;
+    setIsAutoFit(false); // 높이 맞춤은 '자동 폭 맞춤' 해제
+    try {
+      let h = 0;
+      if (imageObj) h = imageObj.naturalHeight;
+      else if (pdf) {
+        const p = await pdf.getPage(page);
+        h = p.getViewport({ scale: 1.0 }).height;
+      }
+      const scrollContainer = canvasRef.current?.parentElement?.parentElement;
+      if (scrollContainer && h > 0) {
+        // 상하 여백 40px
+        const newScale = (scrollContainer.clientHeight - 40) / h;
+        const safeScale = Math.min(5.0, Math.max(0.1, Math.floor(newScale * 100) / 100));
+        setScale(safeScale);
       }
     } catch { }
   };
@@ -269,6 +293,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
 
   const [isMaximized, setIsMaximized] = useState(false);
   const handleFitWidth = () => { setIsAutoFit(true); fitWidth(true); };
+  const handleFitHeight = () => { fitHeight(); };
 
   const containerStyle: React.CSSProperties = isMaximized ? {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: '#f0f0f0', padding: 20, display: 'flex', flexDirection: 'column', gap: 12
@@ -415,6 +440,17 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={handleFitHeight}
+            style={actionBtnStyle}
+            title="전체 보기 (높이 맞춤)"
+            onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
             </svg>
           </button>
           <button
