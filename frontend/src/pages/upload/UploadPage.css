@@ -99,8 +99,9 @@
     box-shadow: 0 12px 24px rgba(229, 62, 62, 0.083);
     margin-bottom: 0px;
     position: relative;
-    /* Fixed height to match reference */
-    height: 300px;
+    /* Fixed height to match reference, but use min-height to allow expansion for file list */
+    min-height: 300px;
+    height: auto;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
