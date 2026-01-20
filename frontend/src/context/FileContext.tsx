@@ -51,6 +51,7 @@ interface FileContextType {
     openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string) => void;
     updateItemSelection: (id: string, selection: { x: number, y: number, width: number, height: number } | null | undefined) => void;
     updateItemCoordinates: (id: string, coordinates: string) => void;
+    clearFiles: () => void;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -272,6 +273,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
         );
     }
 
+    function clearFiles() {
+        setItems([]);
+        setSelectedId(null);
+    }
+
     const value = {
         items,
         addFiles,
@@ -284,7 +290,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         claimFile,
         openSingleFile,
         updateItemSelection,
-        updateItemCoordinates
+        updateItemCoordinates,
+        clearFiles
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

@@ -8,7 +8,7 @@ import { useToast } from '../../context/ToastContext';
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { items, addFiles, removeItem, hasItems, selectedId, setSelectedId, claimFile } = useFiles();
+  const { items, addFiles, removeItem, clearFiles, hasItems, selectedId, setSelectedId, claimFile } = useFiles();
   const { isAuthenticated, openLoginModal } = useAuth();
   const { showToast } = useToast();
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -108,6 +108,22 @@ export default function UploadPage() {
             <div className="uploader-list-card" onClick={(e) => e.stopPropagation()}>
               <div className="uploader-list-header">
                 <h3 className="uploader-list-title">분석할 도면 목록 ({items.length})</h3>
+                <button
+                  onClick={clearFiles}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#e53e3e',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '4px 8px'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                  onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                >
+                  전체 삭제
+                </button>
               </div>
               <ul className="uploader-items">
                 {items.map(it => (
