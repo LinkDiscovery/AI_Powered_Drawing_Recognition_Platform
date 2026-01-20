@@ -11,6 +11,8 @@ public class BBox {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_file_id")
     @com.fasterxml.jackson.annotation.JsonIgnore
     private UserFile userFile;
 

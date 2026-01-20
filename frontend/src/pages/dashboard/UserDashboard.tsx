@@ -4,15 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useFiles } from '../../context/FileContext';
 
+interface BBox {
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 interface UserFile {
     id: number;
     fileName: string;
     fileSize: number;
     uploadTime: string;
-    titleX?: number;
-    titleY?: number;
-    titleWidth?: number;
-    titleHeight?: number;
+    bboxes?: BBox[];
 }
 
 export default function UserDashboard() {
@@ -114,15 +120,18 @@ export default function UserDashboard() {
                 const blob = await res.blob();
                 const downloadedFile = new File([blob], file.fileName, { type: blob.type });
 
-                // Prepare initial selection if exists
+                // Prepare initial selection from BBoxes if exists
                 let initialSelection;
-                if (file.titleX !== undefined && file.titleY !== undefined && file.titleWidth !== undefined && file.titleHeight !== undefined) {
-                    initialSelection = {
-                        x: file.titleX,
-                        y: file.titleY,
-                        width: file.titleWidth,
-                        height: file.titleHeight
-                    };
+                if (file.bboxes && file.bboxes.length > 0) {
+                    const titleBox = file.bboxes.find(b => b.type === 'title');
+                    if (titleBox) {
+                        initialSelection = {
+                            x: titleBox.x,
+                            y: titleBox.y,
+                            width: titleBox.width,
+                            height: titleBox.height
+                        };
+                    }
                 }
 
                 // Open in Context and Navigate
