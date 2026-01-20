@@ -181,12 +181,12 @@ export default function PreviewPage() {
                                     onToolChange={setActiveTool} // Allow PdfViewer to close tools (ESC)
                                     onSaveSelection={async (bboxes: BBox[], rotation: number) => {
                                         if (!activeItem.dbId) {
-                                            alert('파일이 서버에 저장되지 않아 좌표를 저장할 수 없습니다.');
+                                            showToast('파일이 서버에 저장되지 않아 좌표를 저장할 수 없습니다.', 'error');
                                             return;
                                         }
 
                                         if (!token) {
-                                            alert('로그인이 필요합니다.');
+                                            showToast('로그인이 필요합니다.', 'error');
                                             return;
                                         }
 
@@ -217,14 +217,14 @@ export default function PreviewPage() {
                                                     console.warn("Failed to assign to user:", err);
                                                 }
 
-                                                alert('저장되었습니다.\n(대시보드 "데이터 확인 및 수정"에 자동 저장됨)');
+                                                showToast('저장되었습니다. (대시보드 "데이터 확인 및 수정"에 자동 저장됨)', 'success');
                                             } else {
                                                 const txt = await res.text();
-                                                alert(`요청 실패: ${res.status} ${txt}`);
+                                                showToast(`요청 실패: ${res.status} ${txt}`, 'error');
                                             }
                                         } catch (e) {
                                             console.error(e);
-                                            alert('오류 발생');
+                                            showToast('오류 발생', 'error');
                                         }
                                     }}
                                 />

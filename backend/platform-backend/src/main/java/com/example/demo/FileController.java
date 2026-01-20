@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import com.example.demo.model.UserFile;
+// import com.example.demo.model.UserFile; // Unused
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.model.BBox;
-import com.example.demo.repository.BBoxRepository;
+// import com.example.demo.repository.BBoxRepository; // Unused
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -30,17 +30,17 @@ public class FileController {
     private final Path uploadRoot = Paths.get("uploads");
 
     private final com.example.demo.repository.UserFileRepository userFileRepository;
-    private final com.example.demo.repository.BBoxRepository bboxRepository;
+    // private final com.example.demo.repository.BBoxRepository bboxRepository; //
+    // Unused
     private final com.example.demo.util.JwtUtil jwtUtil;
     private final com.example.demo.repository.UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public FileController(com.example.demo.repository.UserFileRepository userFileRepository,
-            com.example.demo.repository.BBoxRepository bboxRepository,
             com.example.demo.util.JwtUtil jwtUtil,
             com.example.demo.repository.UserRepository userRepository) {
         this.userFileRepository = userFileRepository;
-        this.bboxRepository = bboxRepository;
+        // this.bboxRepository = bboxRepository;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
     }

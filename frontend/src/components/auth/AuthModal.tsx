@@ -60,7 +60,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             onClose();
         } catch (error) {
             console.error("Failed to authenticate with Google", error);
-            alert("로그인 처리 중 오류가 발생했습니다.");
+            // alert("로그인 처리 중 오류가 발생했습니다.");
         }
     };
 
@@ -71,7 +71,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             // Check if client ID is missing/default
             const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
             if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
-                alert("Google Client ID가 설정되지 않았습니다. backend/.env 파일을 확인해주세요.");
+                console.warn("Google Client ID가 설정되지 않았습니다. backend/.env 파일을 확인해주세요.");
             }
             console.log("Non-OAuth Error:", err);
         }
@@ -167,8 +167,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             }
             onClose(); // Close modal on success
         } catch (error) {
-            console.error("Auth error", error);
-            // alert("인증 오류가 발생했습니다. 이메일과 비밀번호를 확인해주세요."); // Remove alert
+            // showToast("인증 오류가 발생했습니다.", "error"); // Use local error state instead for modal
             setAuthError(true); // Set error state
         }
     };
