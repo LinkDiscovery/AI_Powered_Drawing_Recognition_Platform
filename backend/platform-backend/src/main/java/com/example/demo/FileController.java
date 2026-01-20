@@ -12,9 +12,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.example.demo.model.UserFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.model.BBox;
@@ -112,6 +111,8 @@ public class FileController {
 
                 // Only allow assignment if currently unassigned? Or allow re-assignment?
                 // Let's allow simple assignment.
+                System.out.println(
+                        "DEBUG: Assigning file " + id + " to user " + user.getEmail() + " (ID: " + user.getId() + ")");
                 file.setUserId(user.getId());
                 userFileRepository.save(file);
                 return ResponseEntity.ok("Assigned");
@@ -216,7 +217,8 @@ public class FileController {
                 java.util.List<com.example.demo.model.UserFile> files = userFileRepository
                         .findByUserIdOrderByUploadTimeDesc(user.getId());
 
-                System.out.println("DEBUG: User " + email + " requesting files. Found: " + files.size());
+                System.out.println("DEBUG: User " + email + " (ID: " + user.getId() + ") requesting files. Found: "
+                        + files.size());
 
                 return ResponseEntity.ok(files);
             }
@@ -259,7 +261,7 @@ public class FileController {
                 }
 
                 // Save legacy string for backup
-                file.setCoordinates(jsonStr);
+                // file.setCoordinates(jsonStr); // Removed as requested
 
                 // Parse and Save to BBoxes table
                 try {

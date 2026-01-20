@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.example.demo.model.BBox;
 
 @Entity
 @Table(name = "user_files")
@@ -26,22 +27,12 @@ public class UserFile {
     @Column(nullable = false)
     private Long fileSize;
 
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime uploadTime;
 
-    @Column(nullable = true)
-    private Double titleX;
+    // Legacy title block fields removed
 
-    @Column(nullable = true)
-    private Double titleY;
-
-    @Column(nullable = true)
-    private Double titleWidth;
-
-    @Column(nullable = true)
-    private Double titleHeight;
-
-    @Column(columnDefinition = "TEXT")
-    private String coordinates;
+    // Legacy coordinates field removed
 
     public UserFile() {
         this.uploadTime = LocalDateTime.now();
@@ -96,45 +87,7 @@ public class UserFile {
         this.fileSize = fileSize;
     }
 
-    public Double getTitleX() {
-        return titleX;
-    }
-
-    public void setTitleX(Double titleX) {
-        this.titleX = titleX;
-    }
-
-    public Double getTitleY() {
-        return titleY;
-    }
-
-    public void setTitleY(Double titleY) {
-        this.titleY = titleY;
-    }
-
-    public Double getTitleWidth() {
-        return titleWidth;
-    }
-
-    public void setTitleWidth(Double titleWidth) {
-        this.titleWidth = titleWidth;
-    }
-
-    public Double getTitleHeight() {
-        return titleHeight;
-    }
-
-    public void setTitleHeight(Double titleHeight) {
-        this.titleHeight = titleHeight;
-    }
-
-    public String getCoordinates() {
-        return coordinates;
-    }
-
-    public void setCoordinates(String coordinates) {
-        this.coordinates = coordinates;
-    }
+    // Legacy Getters/Setters removed
 
     public java.util.List<BBox> getBboxes() {
         return bboxes;

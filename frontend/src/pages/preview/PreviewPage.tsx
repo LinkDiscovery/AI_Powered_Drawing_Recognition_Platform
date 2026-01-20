@@ -11,7 +11,7 @@ export default function PreviewPage() {
     const navigate = useNavigate();
     const { token } = useAuth();
     const { showToast } = useToast();
-    const { activeItem, selectedId, hasItems, updateItemCoordinates } = useFiles();
+    const { activeItem, selectedId, hasItems, updateItemCoordinates, updateItemSelection, claimFile } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
     const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
     // Parse initial coordinates if available as JSON string (fallback to initialSelection for legacy)
@@ -208,12 +208,14 @@ export default function PreviewPage() {
                                             if (res.ok) {
                                                 updateItemCoordinates && updateItemCoordinates(activeItem.id, jsonCoords);
 
-                                                // Also update legacy title block for consistency if single box
-                                                // (Optional: not strictly needed if we rely on coordinates)
-                                                // const titleBox = bboxes.find(b => b.type === 'title');
-                                                // updateItemSelection(activeItem.id, titleBox?.rect);
+                                                // 2. Assign to User (Auto-save to Dashboard)
+                                                try {
+                                                    await claimFile(activeItem.dbId);
+                                                } catch (err) {
+                                                    console.warn("Failed to assign to user:", err);
+                                                }
 
-                                                alert('모든 영역이 저장되었습니다.');
+                                                alert('저장되었습니다.\n(대시보드 "데이터 확인 및 수정"에 자동 저장됨)');
                                             } else {
                                                 const txt = await res.text();
                                                 alert(`요청 실패: ${res.status} ${txt}`);

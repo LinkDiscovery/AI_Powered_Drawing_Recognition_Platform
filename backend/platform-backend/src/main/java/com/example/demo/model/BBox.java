@@ -1,7 +1,7 @@
 package com.example.demo.model;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.example.demo.model.UserFile;
 
 @Entity
 @Table(name = "bboxes")
@@ -11,9 +11,7 @@ public class BBox {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_file_id", nullable = false)
-    @JsonIgnore // Prevent infinite recursion during serialization
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private UserFile userFile;
 
     @Column(nullable = false)

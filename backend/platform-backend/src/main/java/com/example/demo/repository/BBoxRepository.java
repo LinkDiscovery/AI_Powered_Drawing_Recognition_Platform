@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface BBoxRepository extends JpaRepository<BBox, Long> {
-    List<BBox> findByUserFileId(Long userFileId);
+    List<BBox> findByUserFile_Id(Long userFileId);
 }
