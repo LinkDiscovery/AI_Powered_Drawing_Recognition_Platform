@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PdfViewer, { type ToolType } from '../../components/PdfViewer';
 import { useFiles } from '../../context/FileContext';
@@ -74,9 +74,13 @@ export default function PreviewPage() {
     };
 
     // Redirect if no files
+    const toastShownRef = useRef(false);
     useEffect(() => {
         if (!hasItems) {
-            showToast('파일을 업로드 해주세요 !', 'error');
+            if (!toastShownRef.current) {
+                showToast('파일을 업로드 해주세요 !', 'error');
+                toastShownRef.current = true;
+            }
             navigate('/upload');
         }
     }, [hasItems, navigate, showToast]);
