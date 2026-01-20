@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 @Table(name = "user_files")
 public class UserFile {
 
+    @OneToMany(mappedBy = "userFile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<BBox> bboxes = new java.util.ArrayList<>();
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -131,5 +134,13 @@ public class UserFile {
 
     public void setCoordinates(String coordinates) {
         this.coordinates = coordinates;
+    }
+
+    public java.util.List<BBox> getBboxes() {
+        return bboxes;
+    }
+
+    public void setBboxes(java.util.List<BBox> bboxes) {
+        this.bboxes = bboxes;
     }
 }

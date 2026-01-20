@@ -12,7 +12,16 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.example.demo.model.BBox;
+import com.example.demo.repository.BBoxRepository;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
 
 @RestController
 @org.springframework.web.bind.annotation.CrossOrigin(origins = "*")
@@ -21,13 +30,17 @@ public class FileController {
     private final Path uploadRoot = Paths.get("uploads");
 
     private final com.example.demo.repository.UserFileRepository userFileRepository;
+    private final com.example.demo.repository.BBoxRepository bboxRepository;
     private final com.example.demo.util.JwtUtil jwtUtil;
     private final com.example.demo.repository.UserRepository userRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public FileController(com.example.demo.repository.UserFileRepository userFileRepository,
+            com.example.demo.repository.BBoxRepository bboxRepository,
             com.example.demo.util.JwtUtil jwtUtil,
             com.example.demo.repository.UserRepository userRepository) {
         this.userFileRepository = userFileRepository;
+        this.bboxRepository = bboxRepository;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
     }
@@ -235,12 +248,49 @@ public class FileController {
             }
 
             // 1. Save Full JSON Coordinates
+            // 1. Save Full JSON Coordinates and BBoxes
             if (coords.containsKey("coordinates")) {
                 Object coordObj = coords.get("coordinates");
+                String jsonStr = null;
                 if (coordObj instanceof String) {
-                    file.setCoordinates((String) coordObj);
+                    jsonStr = (String) coordObj;
                 } else {
-                    file.setCoordinates(coordObj.toString());
+                    jsonStr = coordObj.toString();
+                }
+
+                // Save legacy string for backup
+                file.setCoordinates(jsonStr);
+
+                // Parse and Save to BBoxes table
+                try {
+                    List<Map<String, Object>> list = objectMapper.readValue(jsonStr,
+                            new TypeReference<List<Map<String, Object>>>() {
+                            });
+
+                    // Clear existing bboxes (orphanRemoval will delete them)
+                    file.getBboxes().clear();
+
+                    for (Map<String, Object> item : list) {
+                        String type = (String) item.get("type");
+                        String frontendId = (String) item.get("id");
+                        Map<String, Number> rect = (Map<String, Number>) item.get("rect");
+
+                        if (type != null && rect != null) {
+                            BBox bbox = new BBox();
+                            bbox.setUserFile(file);
+                            bbox.setType(type);
+                            bbox.setFrontendId(frontendId);
+                            bbox.setX(rect.get("x").doubleValue());
+                            bbox.setY(rect.get("y").doubleValue());
+                            bbox.setWidth(rect.get("width").doubleValue());
+                            bbox.setHeight(rect.get("height").doubleValue());
+
+                            file.getBboxes().add(bbox);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to parse coordinates: " + e.getMessage());
+                    // Don't fail the request, just log it. Legacy string is saved.
                 }
             }
 
