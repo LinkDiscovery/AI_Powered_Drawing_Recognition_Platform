@@ -166,7 +166,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 await signup(email, name, password);
             }
             onClose(); // Close modal on success
-        } catch (error) {
+        } catch {
             // showToast("인증 오류가 발생했습니다.", "error"); // Use local error state instead for modal
             setAuthError(true); // Set error state
         }

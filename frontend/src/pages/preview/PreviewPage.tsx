@@ -11,7 +11,7 @@ export default function PreviewPage() {
     const navigate = useNavigate();
     const { token } = useAuth();
     const { showToast } = useToast();
-    const { activeItem, selectedId, hasItems, updateItemCoordinates, updateItemSelection, claimFile } = useFiles();
+    const { activeItem, selectedId, hasItems, updateItemCoordinates, claimFile } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
     const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
     // Parse initial coordinates if available as JSON string (fallback to initialSelection for legacy)
@@ -208,7 +208,7 @@ export default function PreviewPage() {
                                             });
 
                                             if (res.ok) {
-                                                updateItemCoordinates && updateItemCoordinates(activeItem.id, jsonCoords, rotation);
+                                                updateItemCoordinates(activeItem.id, jsonCoords, rotation);
 
                                                 // 2. Assign to User (Auto-save to Dashboard)
                                                 try {

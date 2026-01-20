@@ -164,7 +164,7 @@ export default function UserDashboard() {
                     file.rotation
                 );
                 navigate('/preview');
-                navigate('/preview');
+
 
             } else {
                 showToast("파일을 불러오는데 실패했습니다.", 'error');

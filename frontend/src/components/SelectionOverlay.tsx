@@ -101,9 +101,6 @@ export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, 
         if (lastClickRef.current && lastClickRef.current.id === id && (now - lastClickRef.current.time < 300)) {
             onDoubleClick?.(id);
             lastClickRef.current = null;
-            // Optional: Return here to prevent drag start on double click? 
-            // Letting drag start is fine, but maybe redundant. 
-            // Let's allow drag to start so "click-click-drag" works or just consistent feel.
         } else {
             lastClickRef.current = { id, time: now };
         }
