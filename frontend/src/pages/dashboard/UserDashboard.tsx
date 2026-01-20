@@ -144,7 +144,8 @@ export default function UserDashboard() {
                             y: b.y,
                             width: b.width,
                             height: b.height
-                        }
+                        },
+                        page: b.page || 1
                     }));
                     coordinatesStr = JSON.stringify(frontendBBoxes);
 
