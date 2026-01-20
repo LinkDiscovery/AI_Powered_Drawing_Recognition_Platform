@@ -4,11 +4,13 @@ import PdfViewer, { type ToolType } from '../../components/PdfViewer';
 import { useFiles } from '../../context/FileContext';
 import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import type { BBox } from '../../components/SelectionOverlay'; // Import BBox type
 
 export default function PreviewPage() {
     const navigate = useNavigate();
     const { token } = useAuth();
+    const { showToast } = useToast();
     const { activeItem, selectedId, hasItems, updateItemCoordinates } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
     const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
@@ -74,9 +76,10 @@ export default function PreviewPage() {
     // Redirect if no files
     useEffect(() => {
         if (!hasItems) {
+            showToast('파일을 업로드 해주세요 !', 'error');
             navigate('/upload');
         }
-    }, [hasItems, navigate]);
+    }, [hasItems, navigate, showToast]);
 
     // Simulate Processing Delay
     useEffect(() => {
@@ -133,7 +136,7 @@ export default function PreviewPage() {
                         <div style={styles.previewHeader}>
                             <div style={styles.titleInfo}>
                                 <div style={styles.fileIcon}>📄</div>
-                                <div style={{ fontWeight: 700, fontSize: 18 }}>PDF 변환 프로그램</div>
+                                <div style={{ fontWeight: 700, fontSize: 18 }}>데이터 추출 프로그램</div>
                                 <div style={styles.divider} />
                                 <div style={styles.fileName}>{activeItem?.name}</div>
                             </div>
@@ -141,7 +144,7 @@ export default function PreviewPage() {
                             <div style={styles.actions}>
                                 <button
                                     style={styles.actionBtn}
-                                    onClick={() => navigate('/')}
+                                    onClick={() => navigate('/upload')}
                                     title="홈으로 이동"
                                 >
                                     처음으로
