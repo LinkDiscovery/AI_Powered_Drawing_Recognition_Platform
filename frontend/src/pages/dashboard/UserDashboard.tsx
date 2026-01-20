@@ -4,6 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useFiles } from '../../context/FileContext';
 
+function formatSize(bytes: number) {
+    const mb = bytes / (1024 * 1024);
+    if (mb >= 1) return `${mb.toFixed(2)} MB`;
+    const kb = bytes / 1024;
+    return `${kb.toFixed(0)} KB`;
+}
+
 interface BBox {
     id: number;
     frontendId?: string;
@@ -21,12 +28,14 @@ interface UserFile {
     uploadTime: string;
     rotation?: number;
     bboxes?: BBox[];
+    contentType?: string; // Add optional if backend sends it, otherwise ignore
 }
 
 export default function UserDashboard() {
     const { user, isAuthenticated, token } = useAuth();
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const { openSingleFile } = useFiles();
     const [fileList, setFileList] = useState<UserFile[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -62,7 +71,7 @@ export default function UserDashboard() {
     }, [isAuthenticated, navigate, token]);
 
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-    const { openSingleFile } = useFiles();
+
 
     // Reset selection when loading new list
     useEffect(() => {
@@ -146,9 +155,14 @@ export default function UserDashboard() {
                 }
 
                 // Open in Context and Navigate
-                // Open in Context and Navigate
-                // openSingleFile(file: File, dbId?: number, initialSelection?: Rect, coordinates?: string, rotation?: number)
-                openSingleFile(downloadedFile, file.id, initialSelection, coordinatesStr, file.rotation);
+                openSingleFile(
+                    downloadedFile,
+                    file.id,
+                    initialSelection,
+                    coordinatesStr,
+                    file.rotation
+                );
+                navigate('/preview');
                 navigate('/preview');
 
             } else {

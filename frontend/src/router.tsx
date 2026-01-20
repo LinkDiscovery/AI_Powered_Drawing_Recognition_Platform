@@ -5,7 +5,6 @@ import HomePage from './pages/home/HomePage';
 import UploadPage from './pages/upload/UploadPage';
 import PreviewPage from './pages/preview/PreviewPage';
 import UserDashboard from './pages/dashboard/UserDashboard';
-// 필요하면 다른 페이지들도 추가
 
 export const router = createBrowserRouter([
   {

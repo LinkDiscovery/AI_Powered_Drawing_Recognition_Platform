@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.UUID;
+import java.io.File;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -166,6 +167,39 @@ public class FileController {
         }
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/api/files/{id}")
+    public ResponseEntity<?> getSingleFile(@org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            String jwt = token.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+            com.example.demo.model.User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            com.example.demo.model.UserFile file = userFileRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
+
+            if (!user.getId().equals(file.getUserId())) {
+                return ResponseEntity.status(403).body("Forbidden");
+            }
+
+            // Re-construct the maps if bboxes are lazy loaded?
+            // Default Jackson serialization should handle lists if initialized.
+            // BBoxes are eagerly fetched or open session in view.
+
+            // IMPORTANT: We need to return structure compatible with frontend
+            // BBox objects will be serialized.
+
+            return ResponseEntity.ok(file);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+        }
+    }
+
     @org.springframework.web.bind.annotation.DeleteMapping("/api/files/{id}")
     public ResponseEntity<?> deleteFile(@org.springframework.web.bind.annotation.PathVariable Long id,
             @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
@@ -249,28 +283,138 @@ public class FileController {
                 return ResponseEntity.status(403).body("Forbidden");
             }
 
-            // 1. Save Full JSON Coordinates
-            // 1. Save Full JSON Coordinates and BBoxes
+            // 1. Get Coordinates & Rotation from Request
+            String jsonStr = null;
             if (coords.containsKey("coordinates")) {
                 Object coordObj = coords.get("coordinates");
-                String jsonStr = null;
-                if (coordObj instanceof String) {
-                    jsonStr = (String) coordObj;
-                } else {
-                    jsonStr = coordObj.toString();
+                jsonStr = (coordObj instanceof String) ? (String) coordObj : coordObj.toString();
+            }
+
+            int rotation = 0;
+            if (coords.containsKey("rotation")) {
+                Object rotObj = coords.get("rotation");
+                if (rotObj instanceof Number) {
+                    rotation = ((Number) rotObj).intValue();
+                }
+            }
+
+            // Normalize rotation
+            rotation = (rotation % 360 + 360) % 360;
+
+            String mimeType = Files.probeContentType(Paths.get(file.getFilePath()));
+            boolean isImage = mimeType != null && mimeType.startsWith("image/");
+
+            // 2. Handle Rotation (Physical vs Metadata)
+            System.out.println("DEBUG: Rotation update requested. Rotation=" + rotation + ", IsImage=" + isImage
+                    + ", Mime=" + mimeType);
+
+            if (isImage && rotation != 0) {
+                System.out.println("DEBUG: Starting physical image rotation...");
+                // Determine physical paths
+                Path filePath = Paths.get(file.getFilePath());
+                File imageFile = filePath.toFile();
+
+                // Read Source Image
+                java.awt.image.BufferedImage src = javax.imageio.ImageIO.read(imageFile);
+                if (src == null)
+                    throw new RuntimeException("Could not read image file");
+
+                // Calculate New Dimensions & Transform
+                int w = src.getWidth();
+                int h = src.getHeight();
+                int newW = w;
+                int newH = h;
+
+                // If 90 or 270, dimensions swap
+                if (rotation == 90 || rotation == 270) {
+                    newW = h;
+                    newH = w;
                 }
 
-                // Save legacy string for backup
-                // file.setCoordinates(jsonStr); // Removed as requested
+                java.awt.image.BufferedImage dest = new java.awt.image.BufferedImage(newW, newH, src.getType());
+                java.awt.Graphics2D g2d = dest.createGraphics();
 
-                // 2. Save Rotation
-                if (coords.containsKey("rotation")) {
-                    Object rotObj = coords.get("rotation");
-                    if (rotObj instanceof Number) {
-                        file.setRotation(((Number) rotObj).intValue());
+                // Rotate around center
+                g2d.translate((newW - w) / 2, (newH - h) / 2); // Center adjustment if needed, but for 90/270 swap it's
+                                                               // tricky
+                // Simpler approach: Rotate based on quadrant
+                // Reset transform
+                g2d.setTransform(new java.awt.geom.AffineTransform());
+
+                if (rotation == 90) {
+                    g2d.translate(newW, 0);
+                    g2d.rotate(Math.toRadians(90));
+                } else if (rotation == 180) {
+                    g2d.translate(newW, newH);
+                    g2d.rotate(Math.toRadians(180));
+                } else if (rotation == 270) {
+                    g2d.translate(0, newH);
+                    g2d.rotate(Math.toRadians(270));
+                }
+
+                g2d.drawImage(src, 0, 0, null);
+                g2d.dispose();
+
+                // Overwrite File
+                String ext = mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                javax.imageio.ImageIO.write(dest, ext, imageFile);
+
+                // Update File Metadata (Reset rotation since physical is now correct)
+                file.setRotation(0);
+
+                // Update BBoxes to match new Orientation
+                // We need to transform the incoming 0-deg coords -> Rotated coords
+                if (jsonStr != null) {
+                    List<Map<String, Object>> list = objectMapper.readValue(jsonStr,
+                            new TypeReference<List<Map<String, Object>>>() {
+                            });
+                    List<Map<String, Object>> newList = new ArrayList<>();
+
+                    for (Map<String, Object> item : list) {
+                        Map<String, Number> rect = (Map<String, Number>) item.get("rect");
+                        double bx = rect.get("x").doubleValue();
+                        double by = rect.get("y").doubleValue();
+                        double bw = rect.get("width").doubleValue();
+                        double bh = rect.get("height").doubleValue();
+
+                        double nx = bx, ny = by, nw = bw, nh = bh;
+
+                        // Transformation Logic (Same as Frontend 'toView=true')
+                        // 0 -> Rot
+                        if (rotation == 90) {
+                            // (x, y) -> (h - y - height, x)
+                            // newW = h, newH = w
+                            nx = h - by - bh;
+                            ny = bx;
+                            nw = bh;
+                            nh = bw;
+                        } else if (rotation == 180) {
+                            // (w - x - width, h - y - height)
+                            nx = w - bx - bw;
+                            ny = h - by - bh;
+                        } else if (rotation == 270) {
+                            // (y, w - x - width)
+                            nx = by;
+                            ny = w - bx - bw;
+                            nw = bh;
+                            nh = bw;
+                        }
+
+                        // Update Rect in Map
+                        item.put("rect", Map.of("x", nx, "y", ny, "width", nw, "height", nh));
+                        newList.add(item);
                     }
+                    // Serialize back to JSON for processing loop below
+                    jsonStr = objectMapper.writeValueAsString(newList);
                 }
 
+            } else {
+                // PDF or no rotation: Just save the rotation metadata
+                file.setRotation(rotation);
+            }
+
+            // 3. Save BBoxes (Common Logic)
+            if (jsonStr != null) {
                 // Parse and Save to BBoxes table
                 try {
                     List<Map<String, Object>> list = objectMapper.readValue(jsonStr,
@@ -300,7 +444,6 @@ public class FileController {
                     }
                 } catch (Exception e) {
                     System.err.println("Failed to parse coordinates: " + e.getMessage());
-                    // Don't fail the request, just log it. Legacy string is saved.
                 }
             }
 
@@ -308,7 +451,10 @@ public class FileController {
 
             return ResponseEntity.ok("Coordinates updated");
 
-        } catch (Exception e) {
+        } catch (
+
+        Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }
     }
