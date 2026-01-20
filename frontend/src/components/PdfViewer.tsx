@@ -345,7 +345,11 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection }: P
 
       if (containerWidth > 0 && contentWidth > 0) {
         // 여백(padding) 등 고려하여 약간 작게 잡음
-        const newScale = (containerWidth - 40) / contentWidth;
+        let newScale = (containerWidth - 40) / contentWidth;
+
+        // Cap automatic scale to 1.5 to prevent too large zoom on start
+        if (!force && newScale > 1.5) newScale = 1.5;
+
         // ✅ 0이 되거나 무한히 작아지는 것 방지 (최소 0.1, 최대 4.0)
         const safeScale = Math.min(Math.max(newScale, 0.1), 4.0);
 
