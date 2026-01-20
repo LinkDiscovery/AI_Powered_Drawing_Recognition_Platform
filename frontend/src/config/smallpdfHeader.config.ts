@@ -117,118 +117,34 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
     },
     groups: [
       {
-        id: 'g-compress',
-        title: '압축하기',
+        id: 'g-drawing',
+        title: '도면 분석',
         items: [
-          { id: 't-compress-pdf', label: 'PDF 압축', href: '/kr/compress-pdf', rightIcon: { type: 'svg' } },
+          { id: 't-upload', label: '도면 업로드', href: '/upload', rightIcon: { type: 'svg' } },
+          { id: 't-dashboard', label: '내 도면 목록', href: '/dashboard', rightIcon: { type: 'svg' } },
         ],
       },
       {
-        id: 'g-convert',
-        title: '변환하기',
+        id: 'g-tools',
+        title: '분석 도구',
         items: [
-          { id: 't-pdf-converter', label: 'PDF 변환기', href: '/kr/pdf-converter', rightIcon: { type: 'svg' } },
+          { id: 't-preview', label: '미리보기 및 편집', href: '/preview', rightIcon: { type: 'svg' } },
         ],
       },
       {
-        id: 'g-ai-pdf',
-        title: 'AI PDF',
+        id: 'g-account',
+        title: '계정',
         items: [
-          { id: 't-chat-pdf', label: 'PDF와 채팅', href: '/kr/chat-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-pdf-summarizer', label: 'AI PDF 요약 도구', href: '/kr/pdf-summarizer', rightIcon: { type: 'svg' } },
-          { id: 't-translate-pdf', label: 'PDF 번역', href: '/kr/translate-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-question-generator', label: 'AI 문제 생성기', href: '/kr/question-generator', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-organize',
-        title: '정리',
-        items: [
-          { id: 't-merge-pdf', label: 'PDF 합치기', href: '/kr/merge-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-split-pdf', label: 'PDF 분할', href: '/kr/split-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-rotate-pdf', label: 'PDF 회전', href: '/kr/rotate-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-delete-pages', label: 'PDF 페이지 삭제', href: '/kr/delete-pages-from-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-extract-pages', label: 'PDF 페이지 추출', href: '/kr/extract-pdf-pages', rightIcon: { type: 'svg' } },
-          { id: 't-organize-pdf', label: 'PDF 정리', href: '/kr/organize-pdf', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-view-edit',
-        title: '보기 및 편집',
-        items: [
-          { id: 't-edit-pdf', label: 'PDF 편집', href: '/kr/edit-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-annotator', label: 'PDF 주석 도구', href: '/kr/pdf-annotator', rightIcon: { type: 'svg' } },
-          { id: 't-reader', label: 'PDF 리더', href: '/kr/pdf-reader', rightIcon: { type: 'svg' } },
-          { id: 't-page-numbers', label: '페이지 번호 매기기', href: '/kr/add-page-numbers-to-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-crop', label: 'PDF 자르기', href: '/kr/crop-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-redact', label: 'PDF 기밀 정보 삭제', href: '/kr/redact-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-watermark', label: '워터마크 PDF', href: '/kr/watermark-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-form-filler', label: 'PDF 양식 필러', href: '/kr/pdf-form-filler', rightIcon: { type: 'svg' } },
-          { id: 't-share', label: 'PDF 공유하기', href: '/kr/share-document', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-from-pdf',
-        title: 'PDF에서 변환',
-        items: [
-          { id: 't-pdf-to-word', label: 'PDF 워드 변환', href: '/kr/pdf-to-word', rightIcon: { type: 'svg' } },
-          { id: 't-pdf-to-excel', label: 'PDF 엑셀 변환', href: '/kr/pdf-to-excel', rightIcon: { type: 'svg' } },
-          { id: 't-pdf-to-ppt', label: 'PDF PPT변환', href: '/kr/pdf-to-ppt', rightIcon: { type: 'svg' } },
-          { id: 't-pdf-to-jpg', label: 'PDF JPG 변환', href: '/kr/pdf-to-jpg', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-to-pdf',
-        title: 'PDF로 변환',
-        items: [
-          { id: 't-word-to-pdf', label: '워드 PDF 변환', href: '/kr/word-to-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-excel-to-pdf', label: '엑셀 PDF 변환', href: '/kr/excel-to-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-ppt-to-pdf', label: 'PPT PDF 변환', href: '/kr/ppt-to-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-jpg-to-pdf', label: 'JPG PDF 변환', href: '/kr/jpg-to-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-pdf-ocr', label: 'PDF OCR 변환', href: '/kr/pdf-ocr', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-sign',
-        title: '서명',
-        items: [
-          { id: 't-sign-pdf', label: 'PDF에 서명', href: '/kr/sign-pdf', rightIcon: { type: 'svg' } },
-          {
-            id: 't-sign-request',
-            label: '서명 요청 (Sign.com)',
-            href: 'https://sign.com/smallpdf?utm_source=smallpdf&utm_medium=nav&utm_content=tool-list',
-            target: '_blank',
-            rel: 'noopener noreferrer',
-            rightIcon: { type: 'svg' },
-          },
-        ],
-      },
-      {
-        id: 'g-more',
-        title: '더 보기',
-        items: [
-          { id: 't-unlock', label: 'PDF 잠금해제', href: '/kr/unlock-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-protect', label: 'PDF 암호 설정', href: '/kr/protect-pdf', rightIcon: { type: 'svg' } },
-          { id: 't-flatten', label: 'PDF 평면화', href: '/kr/flatten-pdf', rightIcon: { type: 'svg' } },
-        ],
-      },
-      {
-        id: 'g-scan',
-        title: '스캔',
-        items: [
-          { id: 't-scanner', label: 'PDF 스캐너', href: '/kr/pdf-scanner', rightIcon: { type: 'svg' } },
+          { id: 't-mypage', label: '마이 페이지', href: '/dashboard', rightIcon: { type: 'svg' } },
         ],
       },
     ],
   },
 
   primaryTabs: [
-    { id: 'tab-compress', label: '압축', href: '/kr/compress-pdf', className: 'hide-below-1000' },
-    { id: 'tab-convert', label: '변환하기', href: '/kr/pdf-converter', className: 'hide-below-1100' },
-    { id: 'tab-merge', label: '병합', href: '/kr/merge-pdf', className: 'hide-below-800' },
-    { id: 'tab-edit', label: '편집', href: '/kr/edit-pdf', className: 'hide-below-900' },
-    { id: 'tab-sign', label: '서명', href: '/kr/sign-pdf', className: 'hide-below-900' },
-    { id: 'tab-ai', label: 'AI PDF', href: '/kr/ai-pdf', className: 'hide-below-800' },
+    { id: 'tab-upload', label: '파일 업로드', href: '/upload' },
+    { id: 'tab-preview', label: '미리보기', href: '/preview' },
+    { id: 'tab-dashboard', label: '데이터 확인 및 수정', href: '/dashboard' },
   ],
 
   rightLinks: [

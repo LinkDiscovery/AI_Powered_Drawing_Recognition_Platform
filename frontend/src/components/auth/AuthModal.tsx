@@ -60,7 +60,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             onClose();
         } catch (error) {
             console.error("Failed to authenticate with Google", error);
-            alert("로그인 처리 중 오류가 발생했습니다.");
+            // alert("로그인 처리 중 오류가 발생했습니다.");
         }
     };
 
@@ -71,7 +71,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             // Check if client ID is missing/default
             const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
             if (!clientId || clientId === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
-                alert("Google Client ID가 설정되지 않았습니다. backend/.env 파일을 확인해주세요.");
+                console.warn("Google Client ID가 설정되지 않았습니다. backend/.env 파일을 확인해주세요.");
             }
             console.log("Non-OAuth Error:", err);
         }
@@ -97,6 +97,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [rememberId, setRememberId] = useState(false);
+
+    // Load saved email on mount
+    useEffect(() => {
+        if (isOpen) {
+            const savedEmail = localStorage.getItem('savedEmail');
+            if (savedEmail) {
+                setEmail(savedEmail);
+                setRememberId(true);
+            }
+        }
+    }, [isOpen]);
 
     // Password UI states
     const [showPassword, setShowPassword] = useState(false);
@@ -144,14 +156,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setAuthError(false); // Reset error
         try {
             if (view === 'login') {
+                if (rememberId) {
+                    localStorage.setItem('savedEmail', email);
+                } else {
+                    localStorage.removeItem('savedEmail');
+                }
                 await login(email, password);
             } else {
                 await signup(email, name, password);
             }
             onClose(); // Close modal on success
-        } catch (error) {
-            console.error("Auth error", error);
-            // alert("인증 오류가 발생했습니다. 이메일과 비밀번호를 확인해주세요."); // Remove alert
+        } catch {
+            // showToast("인증 오류가 발생했습니다.", "error"); // Use local error state instead for modal
             setAuthError(true); // Set error state
         }
     };
@@ -264,6 +280,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                         <EyeIcon visible={showPassword} />
                                     </button>
                                 </div>
+                                {view === 'login' && (
+                                    <div className="rememberIdContainer" style={{ marginTop: '8px', display: 'flex', alignItems: 'center' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="rememberId"
+                                            checked={rememberId}
+                                            onChange={(e) => setRememberId(e.target.checked)}
+                                            style={{ marginRight: '6px' }}
+                                        />
+                                        <label htmlFor="rememberId" style={{ fontSize: '14px', color: '#666', cursor: 'pointer', userSelect: 'none' }}>아이디 저장</label>
+                                    </div>
+                                )}
                                 {view === 'signup' && password.length > 0 && (
                                     <div className="strengthMeter">
                                         <div className={`strengthBar ${strength >= 1 ? 'filled level-' + strength : ''}`} />
