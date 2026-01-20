@@ -197,20 +197,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
 
             if (!response.ok) {
-                // throw new Error('Refresh failed');
-                // Silent fail if refresh fails (maybe network blip), don't logout immediately unless 401
-                if (response.status === 401) throw new Error('Unauthorized');
-                return;
+                // Determine if it's a genuine auth error (401)
+                if (response.status === 401) {
+                    throw new Error('Unauthorized');
+                }
+                return; // Silent fail for network blips
             }
 
             const data = await response.json();
             if (user && data.token) {
                 saveUser(user, data.token);
-                // console.log("Session refreshed"); 
+                showToast("로그인이 연장되었습니다.", 'success');
             }
         } catch (error) {
             console.error("Session refresh failed", error);
-            // logout(); // Only logout if we determine it's fatal
+            // If explicit error (like 401), we should probably logout
+            if ((error as Error).message === 'Unauthorized') {
+                logout();
+                showToast("세션이 만료되었습니다. 다시 로그인해주세요.", 'error');
+            }
         }
     };
 

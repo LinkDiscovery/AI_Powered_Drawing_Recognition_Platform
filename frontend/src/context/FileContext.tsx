@@ -17,6 +17,7 @@ export type UploadItem = {
     mime: string;
     file?: File;
     initialSelection?: { x: number, y: number, width: number, height: number };
+    coordinates?: string; // JSON string of all bounding boxes
 };
 
 // ... (Helper functions unchanged)
@@ -47,8 +48,9 @@ interface FileContextType {
     hasItems: boolean;
     canGoPreview: boolean;
     claimFile: (dbId: number) => Promise<void>;
-    openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }) => void;
+    openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string) => void;
     updateItemSelection: (id: string, selection: { x: number, y: number, width: number, height: number } | null | undefined) => void;
+    updateItemCoordinates: (id: string, coordinates: string) => void;
 }
 
 const FileContext = createContext<FileContextType | undefined>(undefined);
@@ -226,7 +228,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
     // - Adds this file
     // - Selects it
     // - Optionally sets DB ID if known (to avoid re-upload if logic allows, but simplistic approach is fine)
-    function openSingleFile(file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }) {
+    function openSingleFile(file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string) {
         if (!isSupported(file)) {
             alert("지원하지 않는 파일 형식입니다.");
             return;
@@ -243,7 +245,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
             message: '불러오기 완료',
             mime: file.type,
             file,
-            initialSelection
+            initialSelection,
+            coordinates
         };
 
         setItems([newItem]);
@@ -260,6 +263,15 @@ export function FileProvider({ children }: { children: ReactNode }) {
         // Also update activeItem indirectly because it depends on items
     }
 
+    function updateItemCoordinates(id: string, coordinates: string) {
+        setItems((prev) =>
+            prev.map((x) => {
+                if (x.id !== id) return x;
+                return { ...x, coordinates };
+            })
+        );
+    }
+
     const value = {
         items,
         addFiles,
@@ -271,7 +283,8 @@ export function FileProvider({ children }: { children: ReactNode }) {
         canGoPreview,
         claimFile,
         openSingleFile,
-        updateItemSelection
+        updateItemSelection,
+        updateItemCoordinates
     };
 
     return <FileContext.Provider value={value}>{children}</FileContext.Provider>;

@@ -1,20 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
 
-interface Rect {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
+export interface BBox {
+    id: string;
+    type: 'title' | 'front' | 'side' | 'plan';
+    rect: { x: number; y: number; width: number; height: number };
 }
 
 interface SelectionOverlayProps {
     isActive: boolean;
+    activeTool: 'none' | 'title' | 'front' | 'side' | 'plan';
     scale: number;
-    rect: Rect | null; // Current selected rect in PDF coordinates
-    onChange: (rect: Rect | null) => void;
+    bboxes: BBox[];
+    onChange: (bboxes: BBox[]) => void;
 }
 
-export default function SelectionOverlay({ isActive, scale, rect, onChange }: SelectionOverlayProps) {
+const TYPE_CONFIG = {
+    title: { label: '표제란', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.15)' },
+    front: { label: '정면도', color: '#d93025', bg: 'rgba(217, 48, 37, 0.15)' },
+    side: { label: '측면도', color: '#188038', bg: 'rgba(24, 128, 56, 0.15)' },
+    plan: { label: '평면도', color: '#f9ab00', bg: 'rgba(249, 171, 0, 0.15)' },
+};
+
+export default function SelectionOverlay({ isActive, activeTool, scale, bboxes, onChange }: SelectionOverlayProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Interaction states
@@ -22,14 +29,15 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         mode: 'create' | 'move' | 'resize';
         startX: number;
         startY: number;
-        startRect: Rect | null; // For move/resize, the rect at start of drag
-        handle?: string; // For resize: 'nw', 'ne', 'sw', 'se'
+        targetId?: string; // ID of the box being moved/resized
+        startRect?: { x: number; y: number; width: number; height: number }; // Original rect for move/resize
+        handle?: string; // For resize
     } | null>(null);
 
-    // Temporary rect during creation (screen coords relative to container)
-    const [tempRect, setTempRect] = useState<Rect | null>(null);
+    // Temporary rect during creation (screen coords)
+    const [tempRect, setTempRect] = useState<{ x: number, y: number, width: number, height: number } | null>(null);
 
-    // reset interaction when inactive
+    // Reset when inactive
     useEffect(() => {
         if (!isActive) {
             setDragState(null);
@@ -37,28 +45,26 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         }
     }, [isActive]);
 
-    // Helpers to convert between PDF Points and Screen Pixels
-    const toScreen = (r: Rect) => ({
+    // Helpers
+    const toScreen = (r: { x: number, y: number, width: number, height: number }) => ({
         x: r.x * scale,
         y: r.y * scale,
         width: r.width * scale,
         height: r.height * scale
     });
 
-    const toPdf = (r: Rect) => ({
+    const toPdf = (r: { x: number, y: number, width: number, height: number }) => ({
         x: r.x / scale,
         y: r.y / scale,
         width: r.width / scale,
         height: r.height / scale
     });
 
+    // Start CREATING a new box
     const handleMouseDown = (e: React.MouseEvent) => {
-        if (!isActive) return;
-        // Don't prevent default here to allow focus, but we stop propagation
+        if (!isActive || activeTool === 'none') return;
         e.stopPropagation();
 
-        // Use consistent coordinate system: clientX/Y relative to clientRect
-        // This is safer than mixing offsetX/Y which can differ in rounding or origin
         const rect = e.currentTarget.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
@@ -66,40 +72,41 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
         setDragState({
             mode: 'create',
             startX: mouseX,
-            startY: mouseY,
-            startRect: null
+            startY: mouseY
         });
         setTempRect({ x: mouseX, y: mouseY, width: 0, height: 0 });
     };
 
-    const handleBoxMouseDown = (e: React.MouseEvent) => {
-        if (!isActive || !rect) return;
+    // Start MOVING an existing box
+    const handleBoxMouseDown = (e: React.MouseEvent, id: string, rect: { x: number, y: number, width: number, height: number }) => {
+        if (!isActive) return;
         e.stopPropagation();
 
-        // Start Move
         setDragState({
             mode: 'move',
             startX: e.clientX,
             startY: e.clientY,
+            targetId: id,
             startRect: { ...rect }
         });
     };
 
-    const handleHandleMouseDown = (e: React.MouseEvent, handle: string) => {
-        if (!isActive || !rect) return;
+    // Start RESIZING an existing box
+    const handleHandleMouseDown = (e: React.MouseEvent, id: string, rect: { x: number, y: number, width: number, height: number }, handle: string) => {
+        if (!isActive) return;
         e.stopPropagation();
 
-        // Start Resize
         setDragState({
             mode: 'resize',
             startX: e.clientX,
             startY: e.clientY,
+            targetId: id,
             startRect: { ...rect },
             handle
         });
     };
 
-    // Global event listeners for drag
+    // Global Mouse Move / Up
     useEffect(() => {
         if (!dragState || !isActive) return;
 
@@ -107,10 +114,9 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
             if (!containerRef.current) return;
             e.preventDefault();
 
-            // Use containerRef for coordinate calculation
-            const containerRect = containerRef.current.getBoundingClientRect();
-
+            // 1. Create Mode
             if (dragState.mode === 'create') {
+                const containerRect = containerRef.current.getBoundingClientRect();
                 const currX = e.clientX - containerRect.left;
                 const currY = e.clientY - containerRect.top;
 
@@ -121,44 +127,60 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
 
                 setTempRect({ x, y, width, height });
             }
-            else if (dragState.mode === 'move' && dragState.startRect) {
+            // 2. Move Mode
+            else if (dragState.mode === 'move' && dragState.startRect && dragState.targetId) {
                 const dx = (e.clientX - dragState.startX) / scale;
                 const dy = (e.clientY - dragState.startY) / scale;
 
-                onChange({
-                    ...dragState.startRect,
-                    x: dragState.startRect.x + dx,
-                    y: dragState.startRect.y + dy
+                const newBBoxes = bboxes.map(b => {
+                    if (b.id === dragState.targetId) {
+                        return {
+                            ...b,
+                            rect: {
+                                ...b.rect,
+                                x: dragState.startRect!.x + dx,
+                                y: dragState.startRect!.y + dy
+                            }
+                        };
+                    }
+                    return b;
                 });
+                onChange(newBBoxes);
             }
-            else if (dragState.mode === 'resize' && dragState.startRect) {
+            // 3. Resize Mode
+            else if (dragState.mode === 'resize' && dragState.startRect && dragState.targetId) {
                 const dx = (e.clientX - dragState.startX) / scale;
                 const dy = (e.clientY - dragState.startY) / scale;
 
-                const r = { ...dragState.startRect };
+                const newBBoxes = bboxes.map(b => {
+                    if (b.id === dragState.targetId) {
+                        const r = { ...dragState.startRect! };
+                        if (dragState.handle?.includes('e')) r.width += dx;
+                        if (dragState.handle?.includes('s')) r.height += dy;
+                        if (dragState.handle?.includes('w')) { r.x += dx; r.width -= dx; }
+                        if (dragState.handle?.includes('n')) { r.y += dy; r.height -= dy; }
 
-                if (dragState.handle?.includes('e')) r.width += dx;
-                if (dragState.handle?.includes('s')) r.height += dy;
-                if (dragState.handle?.includes('w')) {
-                    r.x += dx;
-                    r.width -= dx;
-                }
-                if (dragState.handle?.includes('n')) {
-                    r.y += dy;
-                    r.height -= dy;
-                }
+                        if (r.width < 0) { r.x += r.width; r.width = -r.width; }
+                        if (r.height < 0) { r.y += r.height; r.height = -r.height; }
 
-                if (r.width < 0) { r.x += r.width; r.width = -r.width; }
-                if (r.height < 0) { r.y += r.height; r.height = -r.height; }
-
-                onChange(r);
+                        return { ...b, rect: r };
+                    }
+                    return b;
+                });
+                onChange(newBBoxes);
             }
         };
 
         const handleGlobalMouseUp = () => {
             if (dragState.mode === 'create' && tempRect) {
-                if (tempRect.width > 5 && tempRect.height > 5) {
-                    onChange(toPdf(tempRect));
+                if (tempRect.width > 5 && tempRect.height > 5 && activeTool !== 'none') {
+                    // Add new box
+                    const newBox: BBox = {
+                        id: Date.now().toString(),
+                        type: activeTool,
+                        rect: toPdf(tempRect)
+                    };
+                    onChange([...bboxes, newBox]);
                 }
                 setTempRect(null);
             }
@@ -172,9 +194,8 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
             window.removeEventListener('mousemove', handleGlobalMouseMove);
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
-    }, [dragState, isActive, scale, tempRect, onChange]); // Note: tempRect dependency for mouseUp check, ensuring we capture latest state if needed, though mostly relying on closure or state updates
+    }, [dragState, isActive, scale, tempRect, bboxes, onChange, activeTool]);
 
-    const screenRect = rect ? toScreen(rect) : null;
 
     return (
         <div
@@ -183,68 +204,102 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                 position: 'absolute',
                 top: 0, left: 0, right: 0, bottom: 0,
                 zIndex: 10,
-                cursor: dragState?.mode === 'create' ? 'crosshair' : 'default',
+                cursor: activeTool !== 'none' ? 'crosshair' : 'default',
             }}
             onMouseDown={handleMouseDown}
         >
-            {/* Existing Selection Box */}
-            {screenRect && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: screenRect.x,
-                        top: screenRect.y,
-                        width: Math.abs(screenRect.width),
-                        height: Math.abs(screenRect.height),
-                        border: '2px solid #2563eb',
-                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
-                        cursor: 'move',
-                        boxSizing: 'border-box',
-                        // Vital: Disable pointer events during creation to ensure offsetX is relative to container
-                        pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto'
-                    }}
-                    onMouseDown={handleBoxMouseDown}
-                >
-                    {/* Resize Handles */}
-                    {['nw', 'ne', 'sw', 'se'].map(h => (
-                        <div
-                            key={h}
-                            onMouseDown={(e) => handleHandleMouseDown(e, h)}
-                            style={{
-                                position: 'absolute',
-                                width: 10, height: 10,
-                                background: 'white',
-                                border: '2px solid #2563eb',
-                                borderRadius: '50%',
-                                boxShadow: '0 0 2px rgba(0,0,0,0.2)',
-                                [h.includes('n') ? 'top' : 'bottom']: -4,
-                                [h.includes('w') ? 'left' : 'right']: -4,
-                                cursor: `${h}-resize`,
-                                zIndex: 1,
-                                pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto'
-                            }}
-                        />
-                    ))}
+            {/* Render Existing Boxes */}
+            {(bboxes || []).map(box => {
+                const screenRect = toScreen(box.rect);
+                const config = TYPE_CONFIG[box.type] || TYPE_CONFIG.title;
+                const isSelected = dragState?.targetId === box.id;
 
-                    {/* Info Tag */}
-                    <div style={{
-                        position: 'absolute',
-                        top: -24,
-                        left: 0,
-                        background: '#2563eb',
-                        color: 'white',
-                        fontSize: 11,
-                        padding: '2px 6px',
-                        borderRadius: 4,
-                        whiteSpace: 'nowrap'
-                    }}>
-                        표제란 선택 영역
+                return (
+                    <div
+                        key={box.id}
+                        style={{
+                            position: 'absolute',
+                            left: screenRect.x,
+                            top: screenRect.y,
+                            width: Math.abs(screenRect.width),
+                            height: Math.abs(screenRect.height),
+                            border: `2px solid ${config.color}`,
+                            backgroundColor: config.bg,
+                            cursor: 'move',
+                            boxSizing: 'border-box',
+                            pointerEvents: dragState?.mode === 'create' ? 'none' : 'auto',
+                            zIndex: isSelected ? 20 : 11
+                        }}
+                        onMouseDown={(e) => handleBoxMouseDown(e, box.id, box.rect)}
+                    >
+                        {/* Resize Handles (Only show if not creating) */}
+                        {dragState?.mode !== 'create' && ['nw', 'ne', 'sw', 'se'].map(h => (
+                            <div
+                                key={h}
+                                onMouseDown={(e) => handleHandleMouseDown(e, box.id, box.rect, h)}
+                                style={{
+                                    position: 'absolute',
+                                    width: 10, height: 10,
+                                    background: 'white',
+                                    border: `2px solid ${config.color}`,
+                                    borderRadius: '50%',
+                                    [h.includes('n') ? 'top' : 'bottom']: -4,
+                                    [h.includes('w') ? 'left' : 'right']: -4,
+                                    cursor: `${h}-resize`,
+                                    zIndex: 2,
+                                }}
+                            />
+                        ))}
+
+                        {/* Label Tag (with Delete Button) */}
+                        <div style={{
+                            position: 'absolute',
+                            top: -24,
+                            left: 0,
+                            display: 'flex',
+                            gap: 4,
+                            alignItems: 'center'
+                        }}>
+                            <div style={{
+                                background: config.color,
+                                color: 'white',
+                                fontSize: 11,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                whiteSpace: 'nowrap',
+                                fontWeight: 600
+                            }}>
+                                {config.label}
+                            </div>
+                            <button
+                                style={{
+                                    background: 'white',
+                                    border: '1px solid #ddd',
+                                    borderRadius: 4,
+                                    width: 18,
+                                    height: 18,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    fontSize: 12,
+                                    color: '#666'
+                                }}
+                                onMouseDown={(e) => {
+                                    e.stopPropagation(); // prevent drag start
+                                    onChange(bboxes.filter(b => b.id !== box.id));
+                                }}
+                                title="삭제"
+                            >
+                                ×
+                            </button>
+                        </div>
                     </div>
-                </div>
-            )}
+                );
+            })}
 
             {/* Temporary Dragging Box */}
-            {tempRect && (
+            {tempRect && activeTool !== 'none' && (
                 <div
                     style={{
                         position: 'absolute',
@@ -252,8 +307,8 @@ export default function SelectionOverlay({ isActive, scale, rect, onChange }: Se
                         top: tempRect.y,
                         width: tempRect.width,
                         height: tempRect.height,
-                        border: '1px solid #d93025',
-                        backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                        border: `1px solid ${TYPE_CONFIG[activeTool].color}`,
+                        backgroundColor: TYPE_CONFIG[activeTool].bg,
                         boxSizing: 'border-box',
                         pointerEvents: 'none'
                     }}

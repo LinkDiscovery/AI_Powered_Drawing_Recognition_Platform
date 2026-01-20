@@ -1,16 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PdfViewer from '../../components/PdfViewer';
+import PdfViewer, { type ToolType } from '../../components/PdfViewer';
 import { useFiles } from '../../context/FileContext';
 import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
+import type { BBox } from '../../components/SelectionOverlay'; // Import BBox type
 
 export default function PreviewPage() {
     const navigate = useNavigate();
     const { token } = useAuth();
-    const { activeItem, selectedId, hasItems, updateItemSelection } = useFiles();
+    const { activeItem, selectedId, hasItems, updateItemCoordinates } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
     const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
+    // Parse initial coordinates if available as JSON string (fallback to initialSelection for legacy)
+    // Parse initial coordinates if available as JSON string
+    const [initialBBoxes, setInitialBBoxes] = useState<BBox[]>([]);
+    useEffect(() => {
+        if (activeItem?.coordinates) {
+            try {
+                const parsed = JSON.parse(activeItem.coordinates);
+                if (Array.isArray(parsed)) {
+                    setInitialBBoxes(parsed);
+                }
+            } catch (e) {
+                // Fallback or ignore
+            }
+        } else {
+            setInitialBBoxes([]);
+        }
+    }, [activeItem]);
+
+    // State Hoisting: Manage Active Tool here to share between Sidebar and PdfViewer
+    const [activeTool, setActiveTool] = useState<ToolType>('none');
 
     // activeItem changes, update savedRect
     useEffect(() => {
@@ -72,15 +93,15 @@ export default function PreviewPage() {
 
     return (
         <div style={styles.appShell}>
-            {/* Left Sidebar */}
-            <Sidebar />
+            {/* Left Sidebar with Tool Control */}
+            <Sidebar
+                activeTool={activeTool}
+                onToolChange={(tool: ToolType) => setActiveTool(activeTool === tool ? 'none' : tool)}
+            />
 
             <div style={styles.mainArea}>
-                {/* Header (re-use existing header or make simplified version? reusing existing for consistency) */}
+                {/* Header */}
                 <div style={styles.headerWrapper}>
-                    {/* We might want to hide the full header here or keep it. 
-                       Smallpdf usually has a simplified header in tool view.
-                       For now, let's keep it simple or use a custom top bar. */}
                 </div>
 
                 {isProcessing ? (
@@ -147,7 +168,10 @@ export default function PreviewPage() {
                                 <PdfViewer
                                     file={activeItem.file}
                                     initialSelection={activeItem.initialSelection}
-                                    onSaveSelection={async (rect) => {
+                                    initialBBoxes={initialBBoxes}
+                                    activeTool={activeTool} // Pass Active Tool
+                                    onToolChange={setActiveTool} // Allow PdfViewer to close tools (ESC)
+                                    onSaveSelection={async (bboxes: BBox[]) => {
                                         if (!activeItem.dbId) {
                                             alert('파일이 서버에 저장되지 않아 좌표를 저장할 수 없습니다.');
                                             return;
@@ -158,8 +182,11 @@ export default function PreviewPage() {
                                             return;
                                         }
 
-                                        // If rect is null, we are deleting
-                                        const payload = rect || { x: null, y: null, width: null, height: null };
+                                        // New JSON Payload
+                                        const jsonCoords = JSON.stringify(bboxes);
+                                        const payload = {
+                                            coordinates: jsonCoords
+                                        };
 
                                         try {
                                             const res = await fetch(`http://localhost:8080/api/files/${activeItem.dbId}/coordinates`, {
@@ -172,9 +199,14 @@ export default function PreviewPage() {
                                             });
 
                                             if (res.ok) {
-                                                setSavedRect(rect); // Can be null
-                                                updateItemSelection(activeItem.id, rect);
-                                                alert(rect ? '표제란 영역이 저장되었습니다.' : '표제란 설정이 삭제되었습니다.');
+                                                updateItemCoordinates && updateItemCoordinates(activeItem.id, jsonCoords);
+
+                                                // Also update legacy title block for consistency if single box
+                                                // (Optional: not strictly needed if we rely on coordinates)
+                                                // const titleBox = bboxes.find(b => b.type === 'title');
+                                                // updateItemSelection(activeItem.id, titleBox?.rect);
+
+                                                alert('모든 영역이 저장되었습니다.');
                                             } else {
                                                 const txt = await res.text();
                                                 alert(`요청 실패: ${res.status} ${txt}`);
@@ -341,7 +373,8 @@ const styles: Record<string, React.CSSProperties> = {
         padding: 24,
         overflow: 'hidden',
         display: 'flex',
-        justifyContent: 'center'
+        flexDirection: 'column', // Changed from default (row) implies check
+        alignItems: 'stretch', // Ensure children take full width
+        justifyContent: 'flex-start' // Don't center vertically/horizontally in a way that shifts
     }
 };
-
