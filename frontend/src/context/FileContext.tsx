@@ -17,6 +17,7 @@ export type UploadItem = {
     mime: string;
     file?: File;
     initialSelection?: { x: number, y: number, width: number, height: number };
+    rotation?: number;
     coordinates?: string; // JSON string of all bounding boxes
 };
 
@@ -48,9 +49,9 @@ interface FileContextType {
     hasItems: boolean;
     canGoPreview: boolean;
     claimFile: (dbId: number) => Promise<void>;
-    openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string) => void;
+    openSingleFile: (file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string, rotation?: number) => void;
     updateItemSelection: (id: string, selection: { x: number, y: number, width: number, height: number } | null | undefined) => void;
-    updateItemCoordinates: (id: string, coordinates: string) => void;
+    updateItemCoordinates: (id: string, coordinates: string, rotation?: number) => void;
     clearFiles: () => void;
 }
 
@@ -229,7 +230,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
     // - Adds this file
     // - Selects it
     // - Optionally sets DB ID if known (to avoid re-upload if logic allows, but simplistic approach is fine)
-    function openSingleFile(file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string) {
+    function openSingleFile(file: File, dbId?: number, initialSelection?: { x: number, y: number, width: number, height: number }, coordinates?: string, rotation?: number) {
         if (!isSupported(file)) {
             alert("지원하지 않는 파일 형식입니다.");
             return;
@@ -243,11 +244,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
             sizeText: formatSize(file.size),
             progress: 100, // Assumed ready if opening from dashboard
             status: 'ready',
-            message: '불러오기 완료',
             mime: file.type,
             file,
             initialSelection,
-            coordinates
+            coordinates,
+            rotation
         };
 
         setItems([newItem]);
@@ -264,11 +265,11 @@ export function FileProvider({ children }: { children: ReactNode }) {
         // Also update activeItem indirectly because it depends on items
     }
 
-    function updateItemCoordinates(id: string, coordinates: string) {
+    function updateItemCoordinates(id: string, coordinates: string, rotation?: number) {
         setItems((prev) =>
             prev.map((x) => {
                 if (x.id !== id) return x;
-                return { ...x, coordinates };
+                return { ...x, coordinates, rotation: rotation ?? x.rotation };
             })
         );
     }

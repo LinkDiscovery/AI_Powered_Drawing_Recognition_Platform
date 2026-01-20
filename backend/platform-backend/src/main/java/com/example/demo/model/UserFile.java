@@ -30,6 +30,9 @@ public class UserFile {
     @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime uploadTime;
 
+    @Column(nullable = false)
+    private Integer rotation = 0;
+
     // Legacy title block fields removed
 
     // Legacy coordinates field removed
@@ -95,5 +98,13 @@ public class UserFile {
 
     public void setBboxes(java.util.List<BBox> bboxes) {
         this.bboxes = bboxes;
+    }
+
+    public Integer getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(Integer rotation) {
+        this.rotation = rotation;
     }
 }

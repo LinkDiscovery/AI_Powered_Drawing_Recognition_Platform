@@ -13,9 +13,10 @@ export type ToolType = 'none' | 'title' | 'front' | 'side' | 'plan';
 
 type PdfViewerProps = {
   file: File | null;
-  onSaveSelection?: (bboxes: BBox[]) => void;
+  onSaveSelection?: (bboxes: BBox[], rotation: number) => void;
   initialSelection?: { x: number, y: number, width: number, height: number } | null;
   initialBBoxes?: BBox[]; // Support for multiple boxes
+  initialRotation?: number; // New Prop
   activeTool: ToolType; // New Prop
   onToolChange: (tool: ToolType) => void; // New Prop (though mainly controlled by parent)
 };
@@ -33,7 +34,79 @@ const iconBtnStyle: React.CSSProperties = {
   transition: 'background 0.2s',
 };
 
-export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, activeTool, onToolChange }: PdfViewerProps) {
+// Coordinate Transformer
+const transformRect = (
+  r: { x: number, y: number, width: number, height: number },
+  rotation: number,
+  w: number, // Original Width (0-deg)
+  h: number, // Original Height (0-deg)
+  toView: boolean
+) => {
+  if (rotation === 0) return { ...r };
+
+  // Normalize rotation to 0, 90, 180, 270
+  const rot = (rotation % 360 + 360) % 360;
+
+  // Logic: 
+  // If toView=true, we convert 0 -> rot.
+  // If toView=false (toZero), we convert rot -> 0 (which is same as rotating by -rot or 360-rot).
+  const effectiveRot = toView ? rot : (360 - rot) % 360;
+
+  // Determine Source Space Dimensions
+  // If toView=true, source is 0-deg space (w, h)
+  // If toView=false, source is View space (rotated space)
+  let sw = w;
+  let sh = h;
+
+  if (!toView) {
+    // If we are converting View -> Zero, input is in View Space.
+    // If original rot was 90 or 270, View Space dims are swapped (h, w).
+    const r = (rotation % 360 + 360) % 360;
+    if (r === 90 || r === 270) {
+      sw = h;
+      sh = w;
+    }
+  }
+
+  let nx = r.x;
+  let ny = r.y;
+  let nw = r.width;
+  let nh = r.height;
+
+  if (effectiveRot === 90) {
+    // 0 -> 90 CW
+    // New Width = h, New Height = w
+    // (x, y) -> (h - y - height, x)
+    return {
+      x: sh - ny - nh,
+      y: nx,
+      width: nh,
+      height: nw
+    };
+  } else if (effectiveRot === 180) {
+    // 0 -> 180
+    // (x, y) -> (w - x - width, h - y - height)
+    return {
+      x: sw - nx - nw,
+      y: sh - ny - nh,
+      width: nw,
+      height: nh
+    };
+  } else if (effectiveRot === 270) {
+    // 0 -> 270 CW (or 90 CCW)
+    // (x, y) -> (y, w - x - width)
+    return {
+      x: ny,
+      y: sw - nx - nw,
+      width: nh,
+      height: nw
+    };
+  }
+
+  return { ...r };
+};
+
+export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [pdf, setPdf] = useState<any>(null);
@@ -41,16 +114,23 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
 
   const [pageCount, setPageCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [docDimensions, setDocDimensions] = useState<{ w: number, h: number }>({ w: 0, h: 0 }); // Natural dimensions (0-deg)
 
   const [scale, setScale] = useState(1.2);
-  const [rotation, setRotation] = useState<0 | 90 | 180 | 270>(0);
+  const [rotation, setRotation] = useState<number>(initialRotation);
+
+  useEffect(() => {
+    if (initialRotation !== undefined) {
+      setRotation(initialRotation);
+    }
+  }, [initialRotation]);
 
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [error, setError] = useState('');
 
 
-  // Multi-Category BBox State
+  // Multi-Category BBox State (Always stored in 0-degree space)
   const [bboxes, setBBoxes] = useState<BBox[]>([]);
 
   // Banner Drag State
@@ -85,11 +165,14 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToolChange]);
 
-  // Load Initial Selection
+  // Load Initial Selection (Assumes initialBBoxes are already in 0-degree if they are from new save system)
+  // For legacy support (if boxes were saved rotated), they might look wrong until re-saved.
   useEffect(() => {
     if (file && initialBBoxes && initialBBoxes.length > 0) {
       setBBoxes(initialBBoxes);
     } else if (file && initialSelection) {
+      // Legacy path: initialSelection was usually passed from "My Page" without rotation context,
+      // currently assumed to be 0-degree safe or we just accept it.
       setBBoxes([{
         id: 'initial-title',
         type: 'title',
@@ -106,11 +189,11 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     return `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
   }, [file]);
 
-  // Document Loading (same as before)
+  // Document Loading
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setError(''); setPdf(null); setImageObj(null); setPageCount(0); setPage(1);
+      setError(''); setPdf(null); setImageObj(null); setPageCount(0); setPage(1); setDocDimensions({ w: 0, h: 0 });
       if (!file) return;
       try {
         setLoadingDoc(true);
@@ -121,12 +204,17 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
           if (cancelled) return;
           setImageObj(img);
           setPageCount(1);
+          setDocDimensions({ w: img.naturalWidth, h: img.naturalHeight });
         } else {
           const ab = await file.arrayBuffer();
           const doc = await pdfjsLib.getDocument({ data: ab }).promise;
           if (cancelled) return;
           setPdf(doc);
           setPageCount(doc.numPages);
+          // Get dimension of first page
+          const p = await doc.getPage(1);
+          const vp = p.getViewport({ scale: 1.0 });
+          setDocDimensions({ w: vp.width, h: vp.height });
         }
       } catch (e: any) {
         setError(e?.message ?? '오류 발생');
@@ -138,7 +226,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     return () => { cancelled = true; };
   }, [file]);
 
-  // Rendering (same as before)
+  // Rendering
   useEffect(() => {
     let cancelled = false;
     let renderTask: any = null;
@@ -172,6 +260,12 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
           canvas.height = Math.floor(vp.height);
           renderTask = p.render({ canvas, viewport: vp });
           await renderTask.promise;
+
+          // Update dimensions in case of mixed page sizes (rare but possible in PDFs)
+          const rawVp = p.getViewport({ scale: 1.0 });
+          if (rawVp.width !== docDimensions.w || rawVp.height !== docDimensions.h) {
+            setDocDimensions({ w: rawVp.width, h: rawVp.height });
+          }
         }
       } catch (e: any) {
         if (!e?.message?.toLowerCase().includes('cancel')) setError(e.message);
@@ -184,7 +278,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
   }, [pdf, imageObj, page, pageCount, scale, rotation]);
 
 
-  // Auto Fit Logic
+  // Auto Fit Logic (same as before)
   const [isAutoFit, setIsAutoFit] = useState(true);
   const fitWidth = async (force = false) => {
     if ((!force && !isAutoFit) || (!pdf && !imageObj)) return;
@@ -197,18 +291,9 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
       }
       const container = canvasRef.current?.parentElement?.parentElement;
       if (container && w > 0) {
-        // 여백(padding) 등 고려하여 약간 작게 잡음
         let calculatedScale = (container.clientWidth - 40) / w;
-
-        // ✅ Smart Fit: 
-        // 1. 화면보다 크면 화면에 맞춤 (calculatedScale < 1)
-        // 2. 화면보다 작으면 굳이 늘리지 않고 100% 유지 (calculatedScale > 1 -> 1.0)
-        // 단, force=true(버튼 클릭 등)인 경우는 꽉 차게 늘림
         const targetScale = force ? calculatedScale : Math.min(calculatedScale, 1.0);
-
-        // ✅ 0이 되거나 무한히 작아지는 것 방지 (최소 0.1, 최대 4.0)
         const activeScale = Math.floor(Math.min(Math.max(targetScale, 0.1), 4.0) * 100) / 100;
-
         setScale(prev => {
           if (Math.abs(prev - activeScale) < 0.02) return prev;
           return activeScale;
@@ -217,10 +302,9 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     } catch { }
   };
 
-  // ✅ 높이 맞춤 (Page Fit)
   const fitHeight = async () => {
     if (!pdf && !imageObj) return;
-    setIsAutoFit(false); // 높이 맞춤은 '자동 폭 맞춤' 해제
+    setIsAutoFit(false);
     try {
       let h = 0;
       if (imageObj) h = imageObj.naturalHeight;
@@ -230,7 +314,6 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
       }
       const scrollContainer = canvasRef.current?.parentElement?.parentElement;
       if (scrollContainer && h > 0) {
-        // 상하 여백 40px
         const newScale = (scrollContainer.clientHeight - 40) / h;
         const safeScale = Math.min(5.0, Math.max(0.1, Math.floor(newScale * 100) / 100));
         setScale(safeScale);
@@ -252,7 +335,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
   }, [pdf, imageObj, page, isAutoFit]);
 
 
-  // Zoom / Pan / Input Logic (Simplified for brevity as it was correct)
+  // Zoom / Pan / Input Logic
   const isDraggingZoom = useRef(false);
   const lastMouseY = useRef(0);
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -304,7 +387,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     ...(isMaximized ? { flex: 1, maxHeight: 'none' } : { maxHeight: 900, minHeight: 500 })
   };
 
-  // STYLES
+  // STYLES (same)
   const controlBarStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px',
     border: '1px solid #ebecf0', borderRadius: 16, background: '#fff',
@@ -329,6 +412,25 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     background: 'transparent',
     color: '#5f6368',
     transition: 'all 0.2s',
+  };
+
+  // Prepare Transformed BBoxes for View
+  const viewBBoxes = useMemo(() => {
+    if (docDimensions.w === 0) return [];
+    return bboxes.map(b => ({
+      ...b,
+      rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, true)
+    }));
+  }, [bboxes, rotation, docDimensions]);
+
+  // Handle Box Changes from View (Convert back to 0-deg)
+  const handleBBoxChange = (newViewBBoxes: BBox[]) => {
+    if (docDimensions.w === 0) return;
+    const zeroBBoxes = newViewBBoxes.map(b => ({
+      ...b,
+      rect: transformRect(b.rect, rotation, docDimensions.w, docDimensions.h, false)
+    }));
+    setBBoxes(zeroBBoxes);
   };
 
   return (
@@ -507,7 +609,8 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
             <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                onClick={() => onSaveSelection?.(bboxes)}
+                // Pass bboxes (which are 0-deg) and current rotation
+                onClick={() => onSaveSelection?.(bboxes, rotation)}
                 style={{ background: '#0052cc', color: 'white', border: 'none', borderRadius: 16, padding: '6px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'background 0.2s' }}
                 onMouseEnter={e => e.currentTarget.style.background = '#0747a6'}
                 onMouseLeave={e => e.currentTarget.style.background = '#0052cc'}
@@ -533,8 +636,8 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
             isActive={activeTool !== 'none'}
             activeTool={activeTool}
             scale={scale}
-            bboxes={bboxes}
-            onChange={setBBoxes}
+            bboxes={viewBBoxes} // Pass Transformed BBoxes
+            onChange={handleBBoxChange} // Convert back to 0-deg on change
           />
         </div>
       </div>

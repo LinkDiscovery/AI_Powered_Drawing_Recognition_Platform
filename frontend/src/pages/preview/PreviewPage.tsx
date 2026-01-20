@@ -176,9 +176,10 @@ export default function PreviewPage() {
                                     file={activeItem.file}
                                     initialSelection={activeItem.initialSelection}
                                     initialBBoxes={initialBBoxes}
+                                    initialRotation={activeItem.rotation}
                                     activeTool={activeTool} // Pass Active Tool
                                     onToolChange={setActiveTool} // Allow PdfViewer to close tools (ESC)
-                                    onSaveSelection={async (bboxes: BBox[]) => {
+                                    onSaveSelection={async (bboxes: BBox[], rotation: number) => {
                                         if (!activeItem.dbId) {
                                             alert('파일이 서버에 저장되지 않아 좌표를 저장할 수 없습니다.');
                                             return;
@@ -192,7 +193,8 @@ export default function PreviewPage() {
                                         // New JSON Payload
                                         const jsonCoords = JSON.stringify(bboxes);
                                         const payload = {
-                                            coordinates: jsonCoords
+                                            coordinates: jsonCoords,
+                                            rotation: rotation
                                         };
 
                                         try {
@@ -206,7 +208,7 @@ export default function PreviewPage() {
                                             });
 
                                             if (res.ok) {
-                                                updateItemCoordinates && updateItemCoordinates(activeItem.id, jsonCoords);
+                                                updateItemCoordinates && updateItemCoordinates(activeItem.id, jsonCoords, rotation);
 
                                                 // 2. Assign to User (Auto-save to Dashboard)
                                                 try {

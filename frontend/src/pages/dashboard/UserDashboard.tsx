@@ -5,7 +5,8 @@ import { useToast } from '../../context/ToastContext';
 import { useFiles } from '../../context/FileContext';
 
 interface BBox {
-    id: string;
+    id: number;
+    frontendId?: string;
     type: string;
     x: number;
     y: number;
@@ -18,6 +19,7 @@ interface UserFile {
     fileName: string;
     fileSize: number;
     uploadTime: string;
+    rotation?: number;
     bboxes?: BBox[];
 }
 
@@ -120,22 +122,33 @@ export default function UserDashboard() {
                 const blob = await res.blob();
                 const downloadedFile = new File([blob], file.fileName, { type: blob.type });
 
-                // Prepare initial selection from BBoxes if exists
+                // Prepare initial selection from BBoxes if exists (focus on title)
                 let initialSelection;
+                let coordinatesStr;
+
                 if (file.bboxes && file.bboxes.length > 0) {
-                    const titleBox = file.bboxes.find(b => b.type === 'title');
+                    const frontendBBoxes = file.bboxes.map(b => ({
+                        id: b.frontendId || String(b.id),
+                        type: b.type,
+                        rect: {
+                            x: b.x,
+                            y: b.y,
+                            width: b.width,
+                            height: b.height
+                        }
+                    }));
+                    coordinatesStr = JSON.stringify(frontendBBoxes);
+
+                    const titleBox = frontendBBoxes.find(b => b.type === 'title');
                     if (titleBox) {
-                        initialSelection = {
-                            x: titleBox.x,
-                            y: titleBox.y,
-                            width: titleBox.width,
-                            height: titleBox.height
-                        };
+                        initialSelection = titleBox.rect;
                     }
                 }
 
                 // Open in Context and Navigate
-                openSingleFile(downloadedFile, file.id, initialSelection);
+                // Open in Context and Navigate
+                // openSingleFile(file: File, dbId?: number, initialSelection?: Rect, coordinates?: string, rotation?: number)
+                openSingleFile(downloadedFile, file.id, initialSelection, coordinatesStr, file.rotation);
                 navigate('/preview');
 
             } else {

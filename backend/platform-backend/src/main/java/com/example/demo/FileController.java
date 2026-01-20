@@ -263,6 +263,14 @@ public class FileController {
                 // Save legacy string for backup
                 // file.setCoordinates(jsonStr); // Removed as requested
 
+                // 2. Save Rotation
+                if (coords.containsKey("rotation")) {
+                    Object rotObj = coords.get("rotation");
+                    if (rotObj instanceof Number) {
+                        file.setRotation(((Number) rotObj).intValue());
+                    }
+                }
+
                 // Parse and Save to BBoxes table
                 try {
                     List<Map<String, Object>> list = objectMapper.readValue(jsonStr,
