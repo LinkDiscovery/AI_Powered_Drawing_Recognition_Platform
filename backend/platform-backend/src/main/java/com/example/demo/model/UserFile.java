@@ -2,13 +2,13 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import com.example.demo.model.BBox;
 
 @Entity
 @Table(name = "user_files")
 public class UserFile {
 
     @OneToMany(mappedBy = "userFile", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private java.util.List<BBox> bboxes = new java.util.ArrayList<>();
 
     @Id

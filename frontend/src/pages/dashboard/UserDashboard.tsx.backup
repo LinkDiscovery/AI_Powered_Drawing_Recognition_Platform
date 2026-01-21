@@ -151,11 +151,11 @@ const UserDashboard = () => {
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            // 1. Fetch File Details WITH BBoxes
-            const fileDetailsRes = await fetch(`http://localhost:8080/api/files/${file.id}`, { headers });
-            if (!fileDetailsRes.ok) throw new Error('Failed to fetch file details');
-            const fileDetails = await fileDetailsRes.json();
-            console.log('File with BBoxes:', fileDetails);
+            // 1. Fetch File Details (including BBoxes/coordinates)
+            // Note: coordinates field in UserFile might be deprecated, check Annotations/BBoxes
+            // For now we just fetch the file metadata if available.
+            // If the backend doesn't return bboxes in this call, we rely on PreviewPage to fetch them? 
+            // Actually PreviewPage fetches based on activeItem... which we are creating here.
 
             // 2. Download File Blob
             const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, { headers });
@@ -163,21 +163,10 @@ const UserDashboard = () => {
             const blob = await res.blob();
             const fileObj = new File([blob], file.name, { type: blob.type });
 
-            // 3. Convert BBoxes to coordinates format
-            let coordinatesJson = undefined;
-            if (fileDetails.bboxes && fileDetails.bboxes.length > 0) {
-                const coordsArray = fileDetails.bboxes.map((bbox: any) => ({
-                    type: bbox.type,
-                    id: bbox.frontendId || `bbox-${bbox.id}`,
-                    rect: { x: bbox.x, y: bbox.y, width: bbox.width, height: bbox.height },
-                    page: bbox.page || 1
-                }));
-                coordinatesJson = JSON.stringify(coordsArray);
-                console.log('Converted coordinates:', coordinatesJson);
-            }
+            // 3. Open in Context
+            // We pass file.id (number) as dbId.
+            openSingleFile(fileObj, file.id);
 
-            // 4. Open in Context with bbox data
-            openSingleFile(fileObj, file.id, undefined, coordinatesJson, fileDetails.rotation || 0);
             navigate('/preview');
         } catch (e) {
             console.error(e);
@@ -186,6 +175,7 @@ const UserDashboard = () => {
             setIsLoading(false);
         }
     };
+
     const moveToTrash = async (id: number, type: 'file' | 'folder') => {
         if (!token) return;
         const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}`;

@@ -13,8 +13,6 @@ export default function PreviewPage() {
     const { showToast } = useToast();
     const { activeItem, selectedId, hasItems, updateItemCoordinates, claimFile } = useFiles();
     const [isProcessing, setIsProcessing] = useState(true);
-    const [savedRect, setSavedRect] = useState<{ x: number, y: number, width: number, height: number } | null | undefined>(activeItem?.initialSelection);
-    // Parse initial coordinates if available as JSON string (fallback to initialSelection for legacy)
     // Parse initial coordinates if available as JSON string
     const [initialBBoxes, setInitialBBoxes] = useState<BBox[]>([]);
     useEffect(() => {
@@ -35,15 +33,10 @@ export default function PreviewPage() {
     // State Hoisting: Manage Active Tool here to share between Sidebar and PdfViewer
     const [activeTool, setActiveTool] = useState<ToolType>('none');
 
-    // activeItem changes, update savedRect
-    useEffect(() => {
-        setSavedRect(activeItem?.initialSelection);
-    }, [activeItem]);
-
     const handleDownload = () => {
         if (!activeItem?.file) return;
 
-        // 1. Download File
+        // 1. Download File (이미지/PDF)
         const fileUrl = URL.createObjectURL(activeItem.file);
         const a = document.createElement('a');
         a.href = fileUrl;
@@ -53,23 +46,47 @@ export default function PreviewPage() {
         document.body.removeChild(a);
         URL.revokeObjectURL(fileUrl);
 
-        // 2. Download JSON (if coordinates exist)
-        if (savedRect) {
+        // 2. Download JSON with ALL BBoxes and Rotation
+        const hasBBoxData = activeItem.coordinates || initialBBoxes.length > 0;
+
+        if (hasBBoxData) {
+            // Parse coordinates to get bbox array
+            let bboxes = [];
+            try {
+                if (activeItem.coordinates) {
+                    bboxes = JSON.parse(activeItem.coordinates);
+                } else if (initialBBoxes.length > 0) {
+                    bboxes = initialBBoxes;
+                }
+            } catch (e) {
+                console.error('Failed to parse bbox data:', e);
+            }
+
             const jsonContent = JSON.stringify({
                 fileName: activeItem.name,
-                coordinates: savedRect,
-                savedAt: new Date().toISOString()
+                fileId: activeItem.dbId,
+                exportedAt: new Date().toISOString(),
+                rotation: activeItem.rotation || 0,
+                bboxes: bboxes,
+                metadata: {
+                    fileSize: activeItem.file.size,
+                    mimeType: activeItem.file.type
+                }
             }, null, 2);
 
             const blob = new Blob([jsonContent], { type: 'application/json' });
             const jsonUrl = URL.createObjectURL(blob);
             const b = document.createElement('a');
             b.href = jsonUrl;
-            b.download = `${activeItem.name}.json`;
+            b.download = `${activeItem.name.replace(/\.[^/.]+$/, '')}_metadata.json`;
             document.body.appendChild(b);
             b.click();
             document.body.removeChild(b);
             URL.revokeObjectURL(jsonUrl);
+
+            console.log('Downloaded image and metadata JSON');
+        } else {
+            console.log('Downloaded image only (no bbox data)');
         }
     };
 

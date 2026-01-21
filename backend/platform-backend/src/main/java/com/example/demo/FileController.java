@@ -252,7 +252,30 @@ public class FileController {
             return ResponseEntity.status(401).body("Unauthorized");
         } catch (Exception e) {
             e.printStackTrace(); // Log error trace
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
+        }
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/api/user/drive/files")
+    public ResponseEntity<?> getDriveRootFiles(
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token != null && token.startsWith("Bearer ")) {
+                String jwt = token.substring(7);
+                String email = jwtUtil.extractEmail(jwt);
+                com.example.demo.model.User user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Fetch files where folderId is NULL and isTrashed is false
+                List<com.example.demo.model.UserFile> files = userFileRepository
+                        .findByUserIdAndFolderIdIsNullAndIsTrashedFalseOrderByUploadTimeDesc(user.getId());
+
+                return ResponseEntity.ok(files);
+            }
             return ResponseEntity.status(401).body("Unauthorized");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         }
     }
 
