@@ -156,9 +156,9 @@ export default function PreviewPage() {
                                 <button
                                     style={styles.actionBtn}
                                     onClick={() => navigate('/dashboard')}
-                                    title="마이 페이지로 이동"
+                                    title="도면 보관함로 이동"
                                 >
-                                    마이 페이지
+                                    도면 보관함
                                 </button>
                                 <button style={styles.actionBtn}>공유</button>
                                 <button
@@ -217,7 +217,7 @@ export default function PreviewPage() {
                                                     console.warn("Failed to assign to user:", err);
                                                 }
 
-                                                showToast('저장되었습니다. (마이 페이지에서 확인 가능)', 'success');
+                                                showToast('저장되었습니다. (도면 보관함에서 확인 가능)', 'success');
                                             } else {
                                                 const txt = await res.text();
                                                 showToast(`요청 실패: ${res.status} ${txt}`, 'error');

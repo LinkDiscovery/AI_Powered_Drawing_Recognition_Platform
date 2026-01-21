@@ -273,7 +273,7 @@ export default function SmallpdfHeader() {
                           <rect x="3" y="3" width="18" height="18" rx="2" />
                           <path d="M9 3v18" />
                         </svg>
-                        마이 페이지
+                        도면 보관함
                       </Link>
 
                       <div className="sp-user-menu-divider" />

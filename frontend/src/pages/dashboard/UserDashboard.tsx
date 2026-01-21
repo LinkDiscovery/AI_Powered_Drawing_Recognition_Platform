@@ -238,7 +238,7 @@ export default function UserDashboard() {
         }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
-                    마이 페이지
+                    도면 보관함
                 </h1>
                 <button
                     onClick={() => navigate('/upload')}
@@ -265,7 +265,7 @@ export default function UserDashboard() {
                         안녕하세요, {user?.name || '사용자'}님
                     </p>
                     <p style={{ fontSize: '14px', color: '#666' }}>
-                        이곳은 {user?.name}님의 마이 페이지입니다. 업로드한 도면 파일을 확인하고 관리하세요.
+                        이곳은 {user?.name}님의 도면 보관함입니다. 업로드한 도면 파일을 확인하고 관리하세요.
                     </p>
                 </div>
             </div>
