@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
+import { useEffect, useState, useRef } from 'react';
+
 
 interface PdfThumbnailProps {
     pdf: any;

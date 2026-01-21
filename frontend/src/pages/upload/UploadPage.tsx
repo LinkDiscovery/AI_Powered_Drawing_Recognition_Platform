@@ -45,7 +45,7 @@ export default function UploadPage() {
     setIsDragOver(false);
   }
 
-  async function handleSaveToMyPage(item: any) {
+  async function handleSaveToArchive(item: any) {
     if (!isAuthenticated) {
       openLoginModal();
       return;
@@ -146,7 +146,7 @@ export default function UploadPage() {
                         if (it.dbId && savedDbIds.has(it.dbId)) {
                           navigate('/dashboard');
                         } else {
-                          handleSaveToMyPage(it);
+                          handleSaveToArchive(it);
                         }
                       }}
                       disabled={savingIds.has(it.id)}
@@ -162,8 +162,8 @@ export default function UploadPage() {
                       }}
                     >
                       {savingIds.has(it.id) ? '저장 중...' :
-                        (it.dbId && savedDbIds.has(it.dbId)) ? '데이터 확인' :
-                          '데이터 저장'}
+                        (it.dbId && savedDbIds.has(it.dbId)) ? '보관함 확인' :
+                          '도면 보관함에 저장'}
                     </button>
 
                     <button className="uploader-item__delete" onClick={() => removeItem(it.id)}>×</button>

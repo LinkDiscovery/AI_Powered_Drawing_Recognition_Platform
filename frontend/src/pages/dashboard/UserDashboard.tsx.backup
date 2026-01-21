@@ -1,0 +1,367 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import DashboardSidebar, { type ToolType } from '../../components/layout/DashboardSidebar';
+import ProjectCard from '../../components/ProjectCard';
+import FolderIcon from '../../components/icons/FolderIcon';
+import { Grid, List as ListIcon, MoreVertical, Trash2 } from 'lucide-react';
+import { useFileContext } from '../../context/FileContext';
+import './UserDashboard.css'; // Vanilla CSS Styles
+
+// Define types locally
+type Folder = {
+    id: number;
+    name: string;
+    userId: number;
+    parentFolderId: number | null;
+    createdAt: string;
+    trashed: boolean;
+};
+
+type FileItem = {
+    id: number;
+    name: string;
+    filePath: string;
+    uploadTime: string;
+    folderId: number | null;
+    isTrashed: boolean;
+};
+
+// Breadcrumb Item
+type Breadcrumb = {
+    id: number | null;
+    name: string;
+};
+
+const UserDashboard = () => {
+    const { user, token } = useAuth();
+    const navigate = useNavigate();
+    const { openSingleFile } = useFileContext();
+
+    // State
+    const [activeNav, setActiveNav] = useState<ToolType>('drive');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+    const [folderStack, setFolderStack] = useState<Breadcrumb[]>([{ id: null, name: '내 드라이브' }]);
+
+    // Data
+    const [folders, setFolders] = useState<Folder[]>([]);
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Modals
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+
+    useEffect(() => {
+        fetchData();
+    }, [user, token, activeNav, currentFolderId]);
+
+    const fetchData = async () => {
+        if (!user || !token) return;
+        setIsLoading(true);
+        try {
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            let filesUrl = 'http://localhost:8080/api/user/files';
+            const foldersUrl = 'http://localhost:8080/api/folders';
+
+            const isTrash = activeNav === 'trash';
+            const fileParams = new URLSearchParams();
+            const folderParams = new URLSearchParams();
+
+            if (isTrash) {
+                fileParams.append('trashed', 'true');
+                folderParams.append('trashed', 'true');
+            } else {
+                if (activeNav === 'recent') {
+                    // Recent defaults to flattened view
+                } else {
+                    if (currentFolderId) {
+                        fileParams.append('folderId', currentFolderId.toString());
+                        folderParams.append('parentId', currentFolderId.toString());
+                    } else {
+                        // Root
+                        filesUrl = 'http://localhost:8080/api/user/drive/files';
+                    }
+                }
+            }
+
+            // Fetch Folders
+            let fetchedFolders: Folder[] = [];
+            if (activeNav !== 'recent') {
+                const folderRes = await fetch(`${foldersUrl}?${folderParams}`, { headers });
+                if (folderRes.ok) fetchedFolders = await folderRes.json();
+            }
+
+            // Fetch Files
+            const fileRes = await (activeNav === 'drive' && !currentFolderId
+                ? fetch(filesUrl, { headers })
+                : fetch(`${filesUrl}?${fileParams}`, { headers }));
+
+            if (fileRes.ok) setFiles(await fileRes.json());
+            setFolders(fetchedFolders);
+
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim() || !token) return;
+        try {
+            const res = await fetch('http://localhost:8080/api/folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: newFolderName,
+                    parentFolderId: currentFolderId
+                })
+            });
+            if (res.ok) {
+                setNewFolderName('');
+                setIsCreateFolderOpen(false);
+                fetchData();
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleFolderClick = (folder: Folder) => {
+        if (folder.trashed) return;
+        setCurrentFolderId(folder.id);
+        setFolderStack([...folderStack, { id: folder.id, name: folder.name }]);
+    };
+
+    const handleNavigateUp = (index: number) => {
+        const newStack = folderStack.slice(0, index + 1);
+        setFolderStack(newStack);
+        setCurrentFolderId(newStack[newStack.length - 1].id);
+    };
+
+    const handleFileClick = async (file: FileItem) => {
+        if (!token) return;
+        setIsLoading(true);
+        try {
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // 1. Fetch File Details (including BBoxes/coordinates)
+            // Note: coordinates field in UserFile might be deprecated, check Annotations/BBoxes
+            // For now we just fetch the file metadata if available.
+            // If the backend doesn't return bboxes in this call, we rely on PreviewPage to fetch them? 
+            // Actually PreviewPage fetches based on activeItem... which we are creating here.
+
+            // 2. Download File Blob
+            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, { headers });
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const fileObj = new File([blob], file.name, { type: blob.type });
+
+            // 3. Open in Context
+            // We pass file.id (number) as dbId.
+            openSingleFile(fileObj, file.id);
+
+            navigate('/preview');
+        } catch (e) {
+            console.error(e);
+            alert('파일을 열 수 없습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const moveToTrash = async (id: number, type: 'file' | 'folder') => {
+        if (!token) return;
+        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}`;
+        try {
+            await fetch(`http://localhost:8080${endpoint}`, {
+                method: type === 'folder' ? 'DELETE' : 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            fetchData();
+        } catch (e) { console.error(e); }
+    };
+
+    return (
+        <div className="dashboard-container">
+            <DashboardSidebar
+                activeItem={activeNav}
+                onNavigate={(mode) => {
+                    setActiveNav(mode);
+                    if (mode !== 'drive') { setCurrentFolderId(null); setFolderStack([]); }
+                    else if (folderStack.length === 0) setFolderStack([{ id: null, name: '내 드라이브' }]);
+                }}
+                onCreateFolder={() => setIsCreateFolderOpen(true)}
+            />
+
+            <div className="dashboard-main">
+                {/* Header */}
+                <div className="dashboard-header">
+                    <div className="breadcrumb-nav">
+                        {activeNav === 'drive' ? (
+                            <div className="flex items-center text-lg font-medium text-gray-700">
+                                {folderStack.map((crumb, index) => (
+                                    <div key={index} className="flex items-center">
+                                        {index > 0 && <span className="mx-2 text-gray-400">/</span>}
+                                        <button
+                                            onClick={() => handleNavigateUp(index)}
+                                            className={`hover:text-blue-600 ${index === folderStack.length - 1 ? 'text-black' : 'text-gray-500'}`}
+                                        >
+                                            {crumb.name}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <h2 className="text-xl font-bold">
+                                {activeNav === 'recent' ? '최근 문서함' : '휴지통'}
+                            </h2>
+                        )}
+                    </div>
+
+                    <div className="view-toggles">
+                        <button onClick={() => setViewMode('list')} className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}>
+                            <ListIcon size={18} />
+                        </button>
+                        <button onClick={() => setViewMode('grid')} className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}>
+                            <Grid size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="dashboard-content">
+                    {/* Loading State */}
+                    {isLoading && (
+                        <div className="flex justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    )}
+
+                    {/* Folders */}
+                    {!isLoading && folders.length > 0 && (
+                        <div className="mb-8">
+                            <h3 className="section-title">폴더</h3>
+                            <div className="folder-grid">
+                                {folders.map(folder => (
+                                    <div
+                                        key={folder.id}
+                                        onDoubleClick={() => handleFolderClick(folder)}
+                                        className="folder-item"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <FolderIcon className="text-gray-500 group-hover:text-blue-500" />
+                                            <span className="font-medium truncate">{folder.name}</span>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveToTrash(folder.id, 'folder'); }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+                                        >
+                                            <MoreVertical size={16} className="text-gray-400" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Files */}
+                    {!isLoading && (
+                        <div>
+                            <h3 className="section-title">파일</h3>
+                            {files.length === 0 && folders.length === 0 ? (
+                                <div className="empty-state">
+                                    <FolderIcon className="empty-icon" size={48} />
+                                    <p>폴더가 비어있습니다.</p>
+                                </div>
+                            ) : (
+                                <div className={viewMode === 'grid' ? "file-grid" : "file-list-container"}>
+                                    {files.map(file => (
+                                        viewMode === 'grid' ? (
+                                            <div key={file.id} className="group relative">
+                                                <ProjectCard
+                                                    title={file.name}
+                                                    date={new Date(file.uploadTime).toLocaleDateString()}
+                                                    thumbnail="/placeholder-pdf.png"
+                                                    onClick={() => handleFileClick(file)}
+                                                />
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="p-1.5 bg-white rounded-full shadow hover:bg-red-50 text-gray-500 hover:text-red-500"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                key={file.id}
+                                                onClick={() => handleFileClick(file)}
+                                                className="list-row"
+                                            >
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className="w-8 h-10 bg-red-100 rounded flex items-center justify-center text-red-500 text-xs font-bold">PDF</div>
+                                                    <div className="truncate font-medium text-gray-700">{file.name}</div>
+                                                </div>
+                                                <div className="flex items-center gap-6 text-sm text-gray-500">
+                                                    <span>{new Date(file.uploadTime).toLocaleDateString()}</span>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Create Folder Modal */}
+            {isCreateFolderOpen && (
+                <div className="modal-overlay">
+                    <div className="create-folder-modal">
+                        <h3 className="modal-title">새 폴더</h3>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="폴더 이름"
+                            className="modal-input"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                        />
+                        <div className="modal-actions">
+                            <button
+                                onClick={() => setIsCreateFolderOpen(false)}
+                                className="btn-cancel"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleCreateFolder}
+                                className="btn-primary"
+                            >
+                                만들기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default UserDashboard;

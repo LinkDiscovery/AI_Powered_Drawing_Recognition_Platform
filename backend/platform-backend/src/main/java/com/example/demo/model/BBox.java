@@ -14,7 +14,7 @@ public class BBox {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_file_id")
     @org.hibernate.annotations.OnDelete(action = org.hibernate.annotations.OnDeleteAction.CASCADE)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @com.fasterxml.jackson.annotation.JsonBackReference
     private UserFile userFile;
 
     @Column(nullable = false)

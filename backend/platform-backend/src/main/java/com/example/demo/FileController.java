@@ -14,11 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-// import com.example.demo.model.UserFile; // Unused
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.model.BBox;
-// import com.example.demo.repository.BBoxRepository; // Unused
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -30,8 +28,6 @@ public class FileController {
     private final Path uploadRoot = Paths.get("uploads");
 
     private final com.example.demo.repository.UserFileRepository userFileRepository;
-    // private final com.example.demo.repository.BBoxRepository bboxRepository; //
-    // Unused
     private final com.example.demo.util.JwtUtil jwtUtil;
     private final com.example.demo.repository.UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -40,7 +36,6 @@ public class FileController {
             com.example.demo.util.JwtUtil jwtUtil,
             com.example.demo.repository.UserRepository userRepository) {
         this.userFileRepository = userFileRepository;
-        // this.bboxRepository = bboxRepository;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
     }
@@ -112,8 +107,6 @@ public class FileController {
 
                 // Only allow assignment if currently unassigned? Or allow re-assignment?
                 // Let's allow simple assignment.
-                System.out.println(
-                        "DEBUG: Assigning file " + id + " to user " + user.getEmail() + " (ID: " + user.getId() + ")");
                 file.setUserId(user.getId());
                 userFileRepository.save(file);
                 return ResponseEntity.ok("Assigned");
@@ -155,7 +148,7 @@ public class FileController {
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
                                 "inline; filename=\"" + java.net.URLEncoder
-                                        .encode(file.getFileName(), java.nio.charset.StandardCharsets.UTF_8)
+                                        .encode(file.getName(), java.nio.charset.StandardCharsets.UTF_8)
                                         .replaceAll("\\+", "%20") + "\"")
                         .body(resource);
             } else {
@@ -186,15 +179,7 @@ public class FileController {
                 return ResponseEntity.status(403).body("Forbidden");
             }
 
-            // Re-construct the maps if bboxes are lazy loaded?
-            // Default Jackson serialization should handle lists if initialized.
-            // BBoxes are eagerly fetched or open session in view.
-
-            // IMPORTANT: We need to return structure compatible with frontend
-            // BBox objects will be serialized.
-
             return ResponseEntity.ok(file);
-
         } catch (Exception e) {
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }
@@ -240,6 +225,8 @@ public class FileController {
 
     @org.springframework.web.bind.annotation.GetMapping("/api/user/files")
     public ResponseEntity<?> getUserFiles(
+            @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false, defaultValue = "false") boolean trashed,
             @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
         try {
             if (token != null && token.startsWith("Bearer ")) {
@@ -248,18 +235,47 @@ public class FileController {
                 com.example.demo.model.User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new RuntimeException("User not found"));
 
-                java.util.List<com.example.demo.model.UserFile> files = userFileRepository
-                        .findByUserIdOrderByUploadTimeDesc(user.getId());
+                List<com.example.demo.model.UserFile> files;
 
-                System.out.println("DEBUG: User " + email + " (ID: " + user.getId() + ") requesting files. Found: "
-                        + files.size());
+                if (trashed) {
+                    files = userFileRepository.findByUserIdAndIsTrashedTrueOrderByUploadTimeDesc(user.getId());
+                } else if (folderId != null) {
+                    files = userFileRepository
+                            .findByUserIdAndFolderIdAndIsTrashedFalseOrderByUploadTimeDesc(user.getId(), folderId);
+                } else {
+                    // Default to Recent (All non-trashed)
+                    files = userFileRepository.findByUserIdAndIsTrashedFalseOrderByUploadTimeDesc(user.getId());
+                }
 
                 return ResponseEntity.ok(files);
             }
             return ResponseEntity.status(401).body("Unauthorized");
         } catch (Exception e) {
             e.printStackTrace(); // Log error trace
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
+        }
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/api/user/drive/files")
+    public ResponseEntity<?> getDriveRootFiles(
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token != null && token.startsWith("Bearer ")) {
+                String jwt = token.substring(7);
+                String email = jwtUtil.extractEmail(jwt);
+                com.example.demo.model.User user = userRepository.findByEmail(email)
+                        .orElseThrow(() -> new RuntimeException("User not found"));
+
+                // Fetch files where folderId is NULL and isTrashed is false
+                List<com.example.demo.model.UserFile> files = userFileRepository
+                        .findByUserIdAndFolderIdIsNullAndIsTrashedFalseOrderByUploadTimeDesc(user.getId());
+
+                return ResponseEntity.ok(files);
+            }
             return ResponseEntity.status(401).body("Unauthorized");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(401).body("Unauthorized: " + e.getMessage());
         }
     }
 
@@ -305,11 +321,8 @@ public class FileController {
             boolean isImage = mimeType != null && mimeType.startsWith("image/");
 
             // 2. Handle Rotation (Physical vs Metadata)
-            System.out.println("DEBUG: Rotation update requested. Rotation=" + rotation + ", IsImage=" + isImage
-                    + ", Mime=" + mimeType);
 
             if (isImage && rotation != 0) {
-                System.out.println("DEBUG: Starting physical image rotation...");
                 // Determine physical paths
                 Path filePath = Paths.get(file.getFilePath());
                 File imageFile = filePath.toFile();
@@ -356,7 +369,10 @@ public class FileController {
                 g2d.dispose();
 
                 // Overwrite File
-                String ext = mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                String ext = "png";
+                if (mimeType != null) {
+                    ext = mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                }
                 javax.imageio.ImageIO.write(dest, ext, imageFile);
 
                 // Update File Metadata (Reset rotation since physical is now correct)
@@ -454,9 +470,7 @@ public class FileController {
 
             return ResponseEntity.ok("Coordinates updated");
 
-        } catch (
-
-        Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }

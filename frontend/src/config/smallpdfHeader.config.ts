@@ -121,7 +121,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
         title: '도면 분석',
         items: [
           { id: 't-upload', label: '도면 업로드', href: '/upload', rightIcon: { type: 'svg' } },
-          { id: 't-dashboard', label: '내 도면 목록', href: '/dashboard', rightIcon: { type: 'svg' } },
+          { id: 't-dashboard', label: '도면 보관함', href: '/dashboard', rightIcon: { type: 'svg' } },
         ],
       },
       {
@@ -135,7 +135,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
         id: 'g-account',
         title: '계정',
         items: [
-          { id: 't-mypage', label: '마이 페이지', href: '/dashboard', rightIcon: { type: 'svg' } },
+          { id: 't-mypage', label: '도면 보관함', href: '/dashboard', rightIcon: { type: 'svg' } },
         ],
       },
     ],
@@ -144,7 +144,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
   primaryTabs: [
     { id: 'tab-upload', label: '파일 업로드', href: '/upload' },
     { id: 'tab-preview', label: '미리보기', href: '/preview' },
-    { id: 'tab-dashboard', label: '데이터 확인 및 수정', href: '/dashboard' },
+    { id: 'tab-dashboard', label: '도면 보관함', href: '/dashboard' },
   ],
 
   rightLinks: [

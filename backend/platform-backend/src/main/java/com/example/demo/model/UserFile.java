@@ -2,13 +2,13 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import com.example.demo.model.BBox;
 
 @Entity
 @Table(name = "user_files")
 public class UserFile {
 
     @OneToMany(mappedBy = "userFile", cascade = CascadeType.ALL, orphanRemoval = true)
+    @com.fasterxml.jackson.annotation.JsonManagedReference
     private java.util.List<BBox> bboxes = new java.util.ArrayList<>();
 
     @Id
@@ -19,7 +19,7 @@ public class UserFile {
     private Long userId; // Simple logical FK (or use @ManyToOne with User)
 
     @Column(nullable = false)
-    private String fileName;
+    private String name;
 
     @Column(nullable = false)
     private String filePath;
@@ -30,23 +30,36 @@ public class UserFile {
     @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime uploadTime;
 
+    @Column(nullable = true)
+    private Long folderId;
+
+    @Column(nullable = false)
+    private boolean isTrashed = false; // Default false
+
     @Column(nullable = false)
     private Integer rotation = 0;
 
-    // Legacy title block fields removed
-
-    // Legacy coordinates field removed
+    // Constructor, Getters and Setters
 
     public UserFile() {
         this.uploadTime = LocalDateTime.now();
     }
 
-    public UserFile(Long userId, String fileName, String filePath, Long fileSize) {
+    public UserFile(String name, String filePath, Long userId) {
+        this.name = name;
+        this.filePath = filePath;
         this.userId = userId;
-        this.fileName = fileName;
+        this.uploadTime = LocalDateTime.now();
+        this.isTrashed = false;
+    }
+
+    public UserFile(Long userId, String name, String filePath, Long fileSize) { // Updated to use 'name'
+        this.userId = userId;
+        this.name = name;
         this.filePath = filePath;
         this.fileSize = fileSize;
         this.uploadTime = LocalDateTime.now();
+        this.isTrashed = false;
     }
 
     // Getters and Setters
@@ -58,8 +71,8 @@ public class UserFile {
         return userId;
     }
 
-    public String getFileName() {
-        return fileName;
+    public String getName() {
+        return name;
     }
 
     public String getFilePath() {
@@ -78,8 +91,8 @@ public class UserFile {
         this.userId = userId;
     }
 
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public void setFilePath(String filePath) {
