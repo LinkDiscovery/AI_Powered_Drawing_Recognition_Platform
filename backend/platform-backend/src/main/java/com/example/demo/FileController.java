@@ -14,11 +14,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-// import com.example.demo.model.UserFile; // Unused
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.demo.model.BBox;
-// import com.example.demo.repository.BBoxRepository; // Unused
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -30,8 +28,6 @@ public class FileController {
     private final Path uploadRoot = Paths.get("uploads");
 
     private final com.example.demo.repository.UserFileRepository userFileRepository;
-    // private final com.example.demo.repository.BBoxRepository bboxRepository; //
-    // Unused
     private final com.example.demo.util.JwtUtil jwtUtil;
     private final com.example.demo.repository.UserRepository userRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -40,7 +36,6 @@ public class FileController {
             com.example.demo.util.JwtUtil jwtUtil,
             com.example.demo.repository.UserRepository userRepository) {
         this.userFileRepository = userFileRepository;
-        // this.bboxRepository = bboxRepository;
         this.jwtUtil = jwtUtil;
         this.userRepository = userRepository;
     }
@@ -112,8 +107,6 @@ public class FileController {
 
                 // Only allow assignment if currently unassigned? Or allow re-assignment?
                 // Let's allow simple assignment.
-                System.out.println(
-                        "DEBUG: Assigning file " + id + " to user " + user.getEmail() + " (ID: " + user.getId() + ")");
                 file.setUserId(user.getId());
                 userFileRepository.save(file);
                 return ResponseEntity.ok("Assigned");
@@ -251,9 +244,6 @@ public class FileController {
                 java.util.List<com.example.demo.model.UserFile> files = userFileRepository
                         .findByUserIdOrderByUploadTimeDesc(user.getId());
 
-                System.out.println("DEBUG: User " + email + " (ID: " + user.getId() + ") requesting files. Found: "
-                        + files.size());
-
                 return ResponseEntity.ok(files);
             }
             return ResponseEntity.status(401).body("Unauthorized");
@@ -305,11 +295,8 @@ public class FileController {
             boolean isImage = mimeType != null && mimeType.startsWith("image/");
 
             // 2. Handle Rotation (Physical vs Metadata)
-            System.out.println("DEBUG: Rotation update requested. Rotation=" + rotation + ", IsImage=" + isImage
-                    + ", Mime=" + mimeType);
 
             if (isImage && rotation != 0) {
-                System.out.println("DEBUG: Starting physical image rotation...");
                 // Determine physical paths
                 Path filePath = Paths.get(file.getFilePath());
                 File imageFile = filePath.toFile();
@@ -356,7 +343,10 @@ public class FileController {
                 g2d.dispose();
 
                 // Overwrite File
-                String ext = mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                String ext = "png";
+                if (mimeType != null) {
+                    ext = mimeType.substring(mimeType.lastIndexOf("/") + 1);
+                }
                 javax.imageio.ImageIO.write(dest, ext, imageFile);
 
                 // Update File Metadata (Reset rotation since physical is now correct)
@@ -454,9 +444,7 @@ public class FileController {
 
             return ResponseEntity.ok("Coordinates updated");
 
-        } catch (
-
-        Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }

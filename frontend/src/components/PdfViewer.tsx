@@ -468,21 +468,21 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
 
   // Context Banner (Double-Click simulation via Selection)
   // Logic: If a box is selected, we show a refined banner or actions
-  // const selectedBBox = bboxes.find(b => b.id === selectedBBoxId); // Removed as per user request to use main tool
+
 
 
   // Handle Double Click to Open Tool
   const handleBBoxDoubleClick = (id: string) => {
     const box = bboxes.find(b => b.id === id);
-    console.log('Double Clicked BBox:', id, box);
+
     if (box) {
-      console.log('Switching Tool to:', box.type);
+
       // Switch tool to the box's type to show the banner
       onToolChange(box.type);
     }
   };
 
-  console.log('Current Active Tool:', activeTool);
+
 
 
   return (

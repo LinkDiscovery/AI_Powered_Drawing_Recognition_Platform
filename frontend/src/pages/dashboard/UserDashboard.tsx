@@ -4,13 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { useFiles } from '../../context/FileContext';
 
-function formatSize(bytes: number) {
-    const mb = bytes / (1024 * 1024);
-    if (mb >= 1) return `${mb.toFixed(2)} MB`;
-    const kb = bytes / 1024;
-    return `${kb.toFixed(0)} KB`;
-}
-
 interface BBox {
     id: number;
     frontendId?: string;
@@ -19,6 +12,7 @@ interface BBox {
     y: number;
     width: number;
     height: number;
+    page?: number;
 }
 
 interface UserFile {
@@ -242,9 +236,22 @@ export default function UserDashboard() {
             padding: '20px',
             fontFamily: 'sans-serif'
         }}>
-            <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>
-                마이 페이지
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
+                    마이 페이지
+                </h1>
+                <button
+                    onClick={() => navigate('/upload')}
+                    style={{
+                        background: 'none', border: 'none', color: '#666', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: 500
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = '#333'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
+                >
+                    <span>←</span> 파일 업로드
+                </button>
+            </div>
 
             <div style={{
                 background: '#f7f9fc',

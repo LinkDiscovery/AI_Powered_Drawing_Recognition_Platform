@@ -147,7 +147,15 @@ export function FileProvider({ children }: { children: ReactNode }) {
                         updateItemStatus(item.id, 100, 'ready', '검사 완료 (ID missing)');
                     }
                 } else {
-                    updateItemStatus(item.id, 0, 'error', '업로드 실패');
+                    let msg = '업로드 실패';
+                    try {
+                        const errRes = JSON.parse(xhr.responseText);
+                        if (errRes.message) msg = errRes.message;
+                        else if (typeof errRes === 'string') msg = errRes;
+                    } catch (e) {
+                        if (xhr.responseText) msg = xhr.responseText;
+                    }
+                    updateItemStatus(item.id, 0, 'error', msg);
                 }
             };
 
@@ -222,7 +230,23 @@ export function FileProvider({ children }: { children: ReactNode }) {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error("Failed to claim file");
+        if (!res.ok) {
+            let errorMsg = "Failed to claim file";
+            try {
+                const errData = await res.text();
+                // Try parsing as JSON first
+                try {
+                    const json = JSON.parse(errData);
+                    if (json.message) errorMsg = json.message;
+                    else errorMsg = errData;
+                } catch {
+                    if (errData) errorMsg = errData;
+                }
+            } catch (e) {
+                // ignore
+            }
+            throw new Error(errorMsg);
+        }
     }
 
     // Open a single file (e.g. from Dashboard)
