@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import SelectionOverlay, { type BBox } from './SelectionOverlay';
 import PdfThumbnail from './PdfThumbnail';
+import { GlobalWorkerOptions, getDocument, type PDFDocumentProxy } from 'pdfjs-dist';
 
-import * as pdfjsLib from 'pdfjs-dist';
 
 // Worker Setup
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
 ).toString();
@@ -110,7 +110,7 @@ const transformRect = (
 export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [pdf, setPdf] = useState<any>(null);
+  const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null); // PDF Document Proxy
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
   const [pageCount, setPageCount] = useState(0);
@@ -210,7 +210,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
           setDocDimensions({ w: img.naturalWidth, h: img.naturalHeight });
         } else {
           const ab = await file.arrayBuffer();
-          const doc = await pdfjsLib.getDocument({ data: ab }).promise;
+          const doc = await getDocument({ data: ab }).promise;
           if (cancelled) return;
           setPdf(doc);
           setPageCount(doc.numPages);

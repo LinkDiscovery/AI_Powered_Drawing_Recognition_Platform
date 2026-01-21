@@ -148,7 +148,7 @@ public class FileController {
                         .contentType(MediaType.parseMediaType(contentType))
                         .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
                                 "inline; filename=\"" + java.net.URLEncoder
-                                        .encode(file.getFileName(), java.nio.charset.StandardCharsets.UTF_8)
+                                        .encode(file.getName(), java.nio.charset.StandardCharsets.UTF_8)
                                         .replaceAll("\\+", "%20") + "\"")
                         .body(resource);
             } else {
@@ -179,15 +179,7 @@ public class FileController {
                 return ResponseEntity.status(403).body("Forbidden");
             }
 
-            // Re-construct the maps if bboxes are lazy loaded?
-            // Default Jackson serialization should handle lists if initialized.
-            // BBoxes are eagerly fetched or open session in view.
-
-            // IMPORTANT: We need to return structure compatible with frontend
-            // BBox objects will be serialized.
-
             return ResponseEntity.ok(file);
-
         } catch (Exception e) {
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }
@@ -233,6 +225,8 @@ public class FileController {
 
     @org.springframework.web.bind.annotation.GetMapping("/api/user/files")
     public ResponseEntity<?> getUserFiles(
+            @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false, defaultValue = "false") boolean trashed,
             @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
         try {
             if (token != null && token.startsWith("Bearer ")) {
@@ -241,8 +235,17 @@ public class FileController {
                 com.example.demo.model.User user = userRepository.findByEmail(email)
                         .orElseThrow(() -> new RuntimeException("User not found"));
 
-                java.util.List<com.example.demo.model.UserFile> files = userFileRepository
-                        .findByUserIdOrderByUploadTimeDesc(user.getId());
+                List<com.example.demo.model.UserFile> files;
+
+                if (trashed) {
+                    files = userFileRepository.findByUserIdAndIsTrashedTrueOrderByUploadTimeDesc(user.getId());
+                } else if (folderId != null) {
+                    files = userFileRepository
+                            .findByUserIdAndFolderIdAndIsTrashedFalseOrderByUploadTimeDesc(user.getId(), folderId);
+                } else {
+                    // Default to Recent (All non-trashed)
+                    files = userFileRepository.findByUserIdAndIsTrashedFalseOrderByUploadTimeDesc(user.getId());
+                }
 
                 return ResponseEntity.ok(files);
             }

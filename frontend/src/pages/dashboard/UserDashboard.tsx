@@ -1,444 +1,369 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../../context/ToastContext';
-import { useFiles } from '../../context/FileContext';
+import DashboardSidebar, { type ToolType } from '../../components/layout/DashboardSidebar';
+import ProjectCard from '../../components/ProjectCard';
+import FolderIcon from '../../components/icons/FolderIcon';
+import { Grid, List as ListIcon, MoreVertical, Trash2 } from 'lucide-react';
+import { useFileContext } from '../../context/FileContext';
+import './UserDashboard.css'; // Vanilla CSS Styles
 
-interface BBox {
+// Define types locally
+type Folder = {
     id: number;
-    frontendId?: string;
-    type: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    page?: number;
-}
+    name: string;
+    userId: number;
+    parentFolderId: number | null;
+    createdAt: string;
+    trashed: boolean;
+};
 
-interface UserFile {
+type FileItem = {
     id: number;
-    fileName: string;
-    fileSize: number;
+    name: string;
+    filePath: string;
     uploadTime: string;
-    rotation?: number;
-    bboxes?: BBox[];
-    contentType?: string; // Add optional if backend sends it, otherwise ignore
-}
+    folderId: number | null;
+    isTrashed: boolean;
+};
 
-export default function UserDashboard() {
-    const { user, isAuthenticated, token } = useAuth();
+// Breadcrumb Item
+type Breadcrumb = {
+    id: number | null;
+    name: string;
+};
+
+const UserDashboard = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
-    const { showToast } = useToast();
-    const { openSingleFile } = useFiles();
-    const [fileList, setFileList] = useState<UserFile[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { openSingleFile } = useFileContext();
 
-    const [loadingPreview, setLoadingPreview] = useState(false);
+    // State
+    const [activeNav, setActiveNav] = useState<ToolType>('drive');
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+    const [folderStack, setFolderStack] = useState<Breadcrumb[]>([{ id: null, name: '내 드라이브' }]);
+
+    // Data
+    const [folders, setFolders] = useState<Folder[]>([]);
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Modals
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     useEffect(() => {
-        if (!isAuthenticated) {
-            navigate('/');
-            return;
-        }
+        fetchData();
+    }, [user, activeNav, currentFolderId]);
 
-        const fetchFiles = async () => {
-            if (!token) return;
-            setLoading(true);
-            try {
-                const res = await fetch('http://localhost:8080/api/user/files', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setFileList(data);
+    const fetchData = async () => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            let filesUrl = 'http://localhost:8080/api/user/files';
+            const foldersUrl = 'http://localhost:8080/api/folders';
+
+            const isTrash = activeNav === 'trash';
+            const fileParams = new URLSearchParams();
+            const folderParams = new URLSearchParams();
+
+            if (isTrash) {
+                fileParams.append('trashed', 'true');
+                folderParams.append('trashed', 'true');
+            } else {
+                if (activeNav === 'recent') {
+                    // Recent defaults to flattened view
                 } else {
-                    console.error("Failed to fetch files");
-                }
-            } catch (err) {
-                console.error("Error fetching files", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchFiles();
-    }, [isAuthenticated, navigate, token]);
-
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-
-
-    // Reset selection when loading new list
-    useEffect(() => {
-        setSelectedIds(new Set());
-    }, [fileList.length]);
-
-    const handleSelectAll = (checked: boolean) => {
-        if (checked) {
-            setSelectedIds(new Set(fileList.map(f => f.id)));
-        } else {
-            setSelectedIds(new Set());
-        }
-    };
-
-    const handleSelectOne = (id: number, checked: boolean) => {
-        const next = new Set(selectedIds);
-        if (checked) next.add(id);
-        else next.delete(id);
-        setSelectedIds(next);
-    };
-
-    const handleBatchDelete = async () => {
-        if (!token) return;
-        if (!window.confirm(`선택한 ${selectedIds.size}개 파일을 영구적으로 삭제하시겠습니까?`)) return;
-
-        setLoading(true);
-        try {
-            const deletePromises = Array.from(selectedIds).map(id =>
-                fetch(`http://localhost:8080/api/files/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-            );
-
-            await Promise.all(deletePromises);
-
-            // Optimistic update
-            setFileList(prev => prev.filter(f => !selectedIds.has(f.id)));
-            setSelectedIds(new Set());
-            showToast(`${selectedIds.size}개 파일이 삭제되었습니다.`, 'success');
-        } catch (e) {
-            console.error(e);
-            showToast("일괄 삭제 중 오류가 발생했습니다.", 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handlePreview = async (file: UserFile) => {
-        if (!token) return;
-        setLoadingPreview(true);
-        try {
-            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const blob = await res.blob();
-                const downloadedFile = new File([blob], file.fileName, { type: blob.type });
-
-                // Prepare initial selection from BBoxes if exists (focus on title)
-                let initialSelection;
-                let coordinatesStr;
-
-                if (file.bboxes && file.bboxes.length > 0) {
-                    const frontendBBoxes = file.bboxes.map(b => ({
-                        id: b.frontendId || String(b.id),
-                        type: b.type,
-                        rect: {
-                            x: b.x,
-                            y: b.y,
-                            width: b.width,
-                            height: b.height
-                        },
-                        page: b.page || 1
-                    }));
-                    coordinatesStr = JSON.stringify(frontendBBoxes);
-
-                    const titleBox = frontendBBoxes.find(b => b.type === 'title');
-                    if (titleBox) {
-                        initialSelection = titleBox.rect;
+                    if (currentFolderId) {
+                        fileParams.append('folderId', currentFolderId.toString());
+                        folderParams.append('parentId', currentFolderId.toString());
+                    } else {
+                        // Root
+                        filesUrl = 'http://localhost:8080/api/user/drive/files';
                     }
                 }
-
-                // Open in Context and Navigate
-                openSingleFile(
-                    downloadedFile,
-                    file.id,
-                    initialSelection,
-                    coordinatesStr,
-                    file.rotation
-                );
-                navigate('/preview');
-
-
-            } else {
-                showToast("파일을 불러오는데 실패했습니다.", 'error');
             }
+
+            // Fetch Folders
+            let fetchedFolders: Folder[] = [];
+            if (activeNav !== 'recent') {
+                const folderRes = await fetch(`${foldersUrl}?${folderParams}`, { headers });
+                if (folderRes.ok) fetchedFolders = await folderRes.json();
+            }
+
+            // Fetch Files
+            const fileRes = await (activeNav === 'drive' && !currentFolderId
+                ? fetch(filesUrl, { headers })
+                : fetch(`${filesUrl}?${fileParams}`, { headers }));
+
+            if (fileRes.ok) setFiles(await fileRes.json());
+            setFolders(fetchedFolders);
+
         } catch (error) {
             console.error(error);
-            showToast("오류가 발생했습니다.", 'error');
         } finally {
-            setLoadingPreview(false);
+            setIsLoading(false);
         }
     };
 
-    // handleSaveCoordinates is no longer needed here as it is handled in PreviewPage/PdfViewer interactions
-    // But wait, PreviewPage needs to know how to save.
-    // PreviewPage uses PdfViewer. PdfViewer handles onSave.
-    // Does PreviewPage implement onSave?
-    // Let's check PreviewPage code later. 
-    // Actually, PreviewPage doesn't have onSaveSelection prop on PdfViewer yet?
-    // UserDashboard previously passed `handleSaveCoordinates`.
-    // We should ensure PreviewPage/PdfViewer can handle saving.
-    // For now, removing `handleSaveCoordinates` from here is correct as we are leaving this page.
-
-    const handleDelete = async (fileId: number) => {
-        if (!token) return;
-        if (!window.confirm("정말로 이 파일을 삭제하시겠습니까?")) return;
-
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
         try {
-            const res = await fetch(`http://localhost:8080/api/files/${fileId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+            const token = localStorage.getItem('token');
+            const res = await fetch('http://localhost:8080/api/folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: newFolderName,
+                    parentFolderId: currentFolderId
+                })
             });
             if (res.ok) {
-                setFileList(prev => prev.filter(f => f.id !== fileId));
-                showToast("삭제되었습니다.", 'success');
-            } else {
-                showToast("삭제 실패", 'error');
+                setNewFolderName('');
+                setIsCreateFolderOpen(false);
+                fetchData();
             }
         } catch (error) {
             console.error(error);
-            showToast("오류가 발생했습니다.", 'error');
         }
     };
 
-    const handleDownload = async (file: UserFile) => {
-        if (!token) return;
+    const handleFolderClick = (folder: Folder) => {
+        if (folder.trashed) return;
+        setCurrentFolderId(folder.id);
+        setFolderStack([...folderStack, { id: folder.id, name: folder.name }]);
+    };
+
+    const handleNavigateUp = (index: number) => {
+        const newStack = folderStack.slice(0, index + 1);
+        setFolderStack(newStack);
+        setCurrentFolderId(newStack[newStack.length - 1].id);
+    };
+
+    const handleFileClick = async (file: FileItem) => {
+        setIsLoading(true);
         try {
-            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = file.fileName;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            } else {
-                showToast("다운로드 실패", 'error');
-            }
+            const token = localStorage.getItem('token');
+            const headers = { 'Authorization': `Bearer ${token}` };
+
+            // 1. Fetch File Details (including BBoxes/coordinates)
+            // Note: coordinates field in UserFile might be deprecated, check Annotations/BBoxes
+            // For now we just fetch the file metadata if available.
+            // If the backend doesn't return bboxes in this call, we rely on PreviewPage to fetch them? 
+            // Actually PreviewPage fetches based on activeItem... which we are creating here.
+
+            // 2. Download File Blob
+            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, { headers });
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const fileObj = new File([blob], file.name, { type: blob.type });
+
+            // 3. Open in Context
+            // We pass file.id (number) as dbId.
+            openSingleFile(fileObj, file.id);
+
+            navigate('/preview');
         } catch (e) {
             console.error(e);
-            showToast("오류가 발생했습니다.", 'error');
+            alert('파일을 열 수 없습니다.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    if (!isAuthenticated) return null;
+    const moveToTrash = async (id: number, type: 'file' | 'folder') => {
+        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}`;
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(`http://localhost:8080${endpoint}`, {
+                method: type === 'folder' ? 'DELETE' : 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            fetchData();
+        } catch (e) { console.error(e); }
+    };
 
     return (
-        <div style={{
-            maxWidth: '1000px',
-            margin: '40px auto',
-            padding: '20px',
-            fontFamily: 'sans-serif'
-        }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
-                    도면 보관함
-                </h1>
-                <button
-                    onClick={() => navigate('/upload')}
-                    style={{
-                        background: 'none', border: 'none', color: '#666', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: 500
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#333'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#666'}
-                >
-                    <span>←</span> 파일 업로드
-                </button>
-            </div>
+        <div className="dashboard-container">
+            <DashboardSidebar
+                activeItem={activeNav}
+                onNavigate={(mode) => {
+                    setActiveNav(mode);
+                    if (mode !== 'drive') { setCurrentFolderId(null); setFolderStack([]); }
+                    else if (folderStack.length === 0) setFolderStack([{ id: null, name: '내 드라이브' }]);
+                }}
+                onCreateFolder={() => setIsCreateFolderOpen(true)}
+            />
 
-            <div style={{
-                background: '#f7f9fc',
-                padding: '24px',
-                borderRadius: '8px',
-                border: '1px solid #e1e5ea',
-                marginBottom: '24px'
-            }}>
-                <div style={{ marginBottom: '16px' }}>
-                    <p style={{ fontWeight: '600', marginBottom: '8px' }}>
-                        안녕하세요, {user?.name || '사용자'}님
-                    </p>
-                    <p style={{ fontSize: '14px', color: '#666' }}>
-                        이곳은 {user?.name}님의 도면 보관함입니다. 업로드한 도면 파일을 확인하고 관리하세요.
-                    </p>
-                </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                    내 도면 히스토리
-                </h2>
-                {selectedIds.size > 0 && (
-                    <button
-                        onClick={handleBatchDelete}
-                        style={{
-                            padding: '8px 12px',
-                            background: '#ff4d4f',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: 600
-                        }}
-                    >
-                        선택한 {selectedIds.size}개 삭제
-                    </button>
-                )}
-            </div>
-
-            {loading ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
-                    <div className="spinner" />
-                </div>
-            ) : fileList.length === 0 ? (
-                <div style={{
-                    padding: '60px 20px',
-                    textAlign: 'center',
-                    background: '#fff',
-                    borderRadius: '8px',
-                    border: '1px solid #eee',
-                    color: '#888',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '16px'
-                }}>
-                    <p>아직 업로드한 파일이 없습니다.</p>
-                    <button
-                        onClick={() => navigate('/upload')}
-                        style={{
-                            padding: '10px 20px',
-                            background: '#e03a3a',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: 600
-                        }}
-                    >
-                        도면 업로드하러 가기
-                    </button>
-                </div>
-            ) : (
-                <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #eee', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                        <thead style={{ background: '#f5f5f5' }}>
-                            <tr>
-                                <th style={{ padding: '12px 16px', width: 40, textAlign: 'center' }}>
-                                    <input
-                                        type="checkbox"
-                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                        checked={fileList.length > 0 && selectedIds.size === fileList.length}
-                                    />
-                                </th>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>파일 이름</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>크기</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: '600', color: '#555' }}>업로드 일시</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: '600', color: '#555' }}></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {fileList.map((file) => (
-                                <tr key={file.id} style={{ borderTop: '1px solid #eee', background: selectedIds.has(file.id) ? '#f0f5ff' : 'white' }}>
-                                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.has(file.id)}
-                                            onChange={(e) => handleSelectOne(file.id, e.target.checked)}
-                                        />
-                                    </td>
-                                    <td style={{ padding: '12px 16px', color: '#333' }}>
-                                        <div
-                                            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-                                            onClick={() => handlePreview(file)}
+            <div className="dashboard-main">
+                {/* Header */}
+                <div className="dashboard-header">
+                    <div className="breadcrumb-nav">
+                        {activeNav === 'drive' ? (
+                            <div className="flex items-center text-lg font-medium text-gray-700">
+                                {folderStack.map((crumb, index) => (
+                                    <div key={index} className="flex items-center">
+                                        {index > 0 && <span className="mx-2 text-gray-400">/</span>}
+                                        <button
+                                            onClick={() => handleNavigateUp(index)}
+                                            className={`hover:text-blue-600 ${index === folderStack.length - 1 ? 'text-black' : 'text-gray-500'}`}
                                         >
-                                            <span>{file.fileName.toLowerCase().endsWith('.pdf') ? '📄' : '🖼️'}</span>
-                                            <span style={{ textDecoration: 'underline', color: '#1a73e8' }}>
-                                                {file.fileName}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '12px 16px', color: '#666' }}>
-                                        {(file.fileSize / 1024).toFixed(0)} KB
-                                    </td>
-                                    <td style={{ padding: '12px 16px', color: '#666' }}>
-                                        {new Date(file.uploadTime).toLocaleString()}
-                                    </td>
-                                    <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                            <button
-                                                onClick={() => handleDownload(file)}
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid #ddd',
-                                                    background: 'white',
-                                                    color: '#666',
-                                                    cursor: 'pointer',
-                                                    fontSize: '12px'
-                                                }}
-                                            >
-                                                다운로드
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(file.id)}
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid #ff4d4f',
-                                                    background: 'white',
-                                                    color: '#ff4d4f',
-                                                    cursor: 'pointer',
-                                                    fontSize: '12px'
-                                                }}
-                                            >
-                                                삭제
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                                            {crumb.name}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <h2 className="text-xl font-bold">
+                                {activeNav === 'recent' ? '최근 문서함' : '휴지통'}
+                            </h2>
+                        )}
+                    </div>
 
-            {loadingPreview && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(255,255,255,0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 2000
-                }}>
-                    <div style={{
-                        padding: '24px',
-                        background: 'white',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '12px'
-                    }}>
-                        <div className="spinner" />
-                        <span style={{ color: '#555', fontWeight: 500 }}>파일 불러오는 중...</span>
+                    <div className="view-toggles">
+                        <button onClick={() => setViewMode('list')} className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}>
+                            <ListIcon size={18} />
+                        </button>
+                        <button onClick={() => setViewMode('grid')} className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}>
+                            <Grid size={18} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="dashboard-content">
+                    {/* Loading State */}
+                    {isLoading && (
+                        <div className="flex justify-center p-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                    )}
+
+                    {/* Folders */}
+                    {!isLoading && folders.length > 0 && (
+                        <div className="mb-8">
+                            <h3 className="section-title">폴더</h3>
+                            <div className="folder-grid">
+                                {folders.map(folder => (
+                                    <div
+                                        key={folder.id}
+                                        onDoubleClick={() => handleFolderClick(folder)}
+                                        className="folder-item"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <FolderIcon className="text-gray-500 group-hover:text-blue-500" />
+                                            <span className="font-medium truncate">{folder.name}</span>
+                                        </div>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); moveToTrash(folder.id, 'folder'); }}
+                                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded"
+                                        >
+                                            <MoreVertical size={16} className="text-gray-400" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Files */}
+                    {!isLoading && (
+                        <div>
+                            <h3 className="section-title">파일</h3>
+                            {files.length === 0 && folders.length === 0 ? (
+                                <div className="empty-state">
+                                    <FolderIcon className="empty-icon" size={48} />
+                                    <p>폴더가 비어있습니다.</p>
+                                </div>
+                            ) : (
+                                <div className={viewMode === 'grid' ? "file-grid" : "file-list-container"}>
+                                    {files.map(file => (
+                                        viewMode === 'grid' ? (
+                                            <div key={file.id} className="group relative">
+                                                <ProjectCard
+                                                    title={file.name}
+                                                    date={new Date(file.uploadTime).toLocaleDateString()}
+                                                    thumbnail="/placeholder-pdf.png"
+                                                    onClick={() => handleFileClick(file)}
+                                                />
+                                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="p-1.5 bg-white rounded-full shadow hover:bg-red-50 text-gray-500 hover:text-red-500"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                key={file.id}
+                                                onClick={() => handleFileClick(file)}
+                                                className="list-row"
+                                            >
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className="w-8 h-10 bg-red-100 rounded flex items-center justify-center text-red-500 text-xs font-bold">PDF</div>
+                                                    <div className="truncate font-medium text-gray-700">{file.name}</div>
+                                                </div>
+                                                <div className="flex items-center gap-6 text-sm text-gray-500">
+                                                    <span>{new Date(file.uploadTime).toLocaleDateString()}</span>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Create Folder Modal */}
+            {isCreateFolderOpen && (
+                <div className="modal-overlay">
+                    <div className="create-folder-modal">
+                        <h3 className="modal-title">새 폴더</h3>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="폴더 이름"
+                            className="modal-input"
+                            autoFocus
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                        />
+                        <div className="modal-actions">
+                            <button
+                                onClick={() => setIsCreateFolderOpen(false)}
+                                className="btn-cancel"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleCreateFolder}
+                                className="btn-primary"
+                            >
+                                만들기
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
         </div>
     );
-}
+};
+
+export default UserDashboard;
