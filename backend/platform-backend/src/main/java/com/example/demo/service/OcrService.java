@@ -8,7 +8,7 @@ import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.stereotype.Service;
-import org.apache.pdfbox.Loader; // Import PDFBox 3.x Loader
+import org.apache.pdfbox.Loader;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -26,21 +26,8 @@ public class OcrService {
         BufferedImage image = null;
 
         if (file.getName().toLowerCase().endsWith(".pdf")) {
-            // PDFBox 3.x uses Loader.loadPDF(file) instead of PDDocument.load(file)
-            // But let's check dependency version. Tesseract often pulls older PDFBox.
-            // If explicit PDFBox dependency is added, check version.
-            // Trying compatibility approach first.
-
-            PDDocument document = null;
-            try {
-                // Try old way first (2.x)
-                document = PDDocument.load(file);
-            } catch (NoSuchMethodError | Exception e) {
-                // Try new way (3.x)
-                document = Loader.loadPDF(file);
-            }
-
-            try (PDDocument doc = document) {
+            // PDFBox 3.x uses Loader.loadPDF(file)
+            try (PDDocument doc = Loader.loadPDF(file)) {
                 PDFRenderer pdfRenderer = new PDFRenderer(doc);
                 int pageIndex = (bbox.getPage() != null && bbox.getPage() > 0) ? bbox.getPage() - 1 : 0;
                 float scale = 3.0f;

@@ -48,7 +48,7 @@ public class OcrController {
         }
 
         UserFile userFile = fileOpt.get();
-        Path filePath = uploadRoot.resolve(userFile.getFilePath());
+        Path filePath = Paths.get(userFile.getFilePath());
 
         try {
             // Perform OCR

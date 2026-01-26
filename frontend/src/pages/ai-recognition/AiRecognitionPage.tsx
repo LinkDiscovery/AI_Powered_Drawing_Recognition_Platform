@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Scan, FileText, FolderOpen, Image as ImageIcon, Upload, Eye, AlertCircle, Save, X, Edit2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PdfViewer, { type ToolType } from '../../components/PdfViewer';
@@ -32,6 +32,7 @@ type SourceTab = 'preview' | 'storage';
 
 export default function AiRecognitionPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, token, openLoginModal } = useAuth();
 
     // 상태 관리
@@ -54,6 +55,9 @@ export default function AiRecognitionPage() {
     // PDF 뷰어 상태
     const [activeTool, setActiveTool] = useState<ToolType>('none');
 
+    // Ref for auto-scroll to results
+    const resultsRef = React.useRef<HTMLDivElement>(null);
+
     // 로그인 확인
     useEffect(() => {
         if (!user) {
@@ -68,6 +72,24 @@ export default function AiRecognitionPage() {
         }
     }, [user, token, activeTab]);
 
+    // Handle auto-selection from navigation state
+    useEffect(() => {
+        const state = location.state as { fileId?: number } | null;
+        if (state?.fileId && files.length > 0 && !selectedFile) {
+            const targetFile = files.find(f => f.id === state.fileId);
+            if (targetFile) {
+                handleFileSelect(targetFile);
+            }
+        }
+    }, [files, location.state]);
+
+    // Auto-scroll to results when OCR completes
+    useEffect(() => {
+        if (showResultForm && resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [showResultForm]);
+
     const fetchFiles = async () => {
         if (!token) return;
 
@@ -75,7 +97,7 @@ export default function AiRecognitionPage() {
         setError(null);
 
         try {
-            const response = await fetch('/api/files', {
+            const response = await fetch('/api/user/files', {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                 },
@@ -128,8 +150,20 @@ export default function AiRecognitionPage() {
             let bboxes: BBox[] = [];
             if (detailRes.ok) {
                 const detailData = await detailRes.json();
-                if (detailData.bboxes) {
-                    bboxes = detailData.bboxes;
+                if (detailData.bboxes && Array.isArray(detailData.bboxes)) {
+                    // Backend BBox: { id, x, y, width, height, type, page, frontendId }
+                    // Frontend BBox: { id, rect: { x, y, width, height }, type, page }
+                    bboxes = detailData.bboxes.map((b: any) => ({
+                        id: b.frontendId || String(b.id),
+                        rect: {
+                            x: b.x,
+                            y: b.y,
+                            width: b.width,
+                            height: b.height
+                        },
+                        type: b.type,
+                        page: b.page
+                    }));
                 }
             }
 
