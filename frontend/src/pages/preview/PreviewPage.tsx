@@ -172,6 +172,13 @@ export default function PreviewPage() {
                                 </button>
                                 <button
                                     style={styles.actionBtn}
+                                    onClick={() => activeItem && navigate('/ai-recognition', { state: { fileId: activeItem.dbId } })}
+                                    title="AI 인식으로 이동"
+                                >
+                                    AI 인식
+                                </button>
+                                <button
+                                    style={styles.actionBtn}
                                     onClick={() => navigate('/dashboard')}
                                     title="도면 보관함로 이동"
                                 >

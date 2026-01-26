@@ -4,117 +4,136 @@ import { Link } from 'react-router-dom';
 export default function HomePage() {
     return (
         <div style={styles.container}>
-            <header style={styles.hero}>
-                <h1 style={styles.title}>AI 도면 분석 플랫폼</h1>
-                <p style={styles.subtitle}>
-                    건축, 건설 도면(PDF, 이미지)을 업로드하여<br />
-                    텍스트, 심볼, 테이블 정보를 AI로 자동 추출하고 데이터로 변환하세요.
-                </p>
-                <div style={styles.actions}>
-                    <Link to="/upload" style={styles.primaryButton}>
-                        도면 업로드 시작하기
-                    </Link>
-                    <Link to="/dashboard" style={styles.secondaryButton}>
-                        내 도면함 (대시보드)
-                    </Link>
-                </div>
-            </header>
+            {/* Background Video */}
+            <video
+                src="/assets/intro-video.mp4"
+                style={styles.videoBackground}
+                autoPlay
+                muted
+                loop
+                playsInline
+            />
+            {/* Dark Overlay */}
+            <div style={styles.overlay} />
 
-            <section style={styles.features}>
-                <div style={styles.featureCard}>
-                    <div style={styles.icon}>🚀</div>
-                    <h3>빠른 처리</h3>
-                    <p>AI가 도면을 신속하게 분석하여 데이터를 추출합니다.</p>
-                </div>
-                <div style={styles.featureCard}>
-                    <div style={styles.icon}>📊</div>
-                    <h3>정확한 데이터</h3>
-                    <p>텍스트, 심볼, 테이블을 정밀하게 인식합니다.</p>
-                </div>
-                <div style={styles.featureCard}>
-                    <div style={styles.icon}>💾</div>
-                    <h3>편리한 관리</h3>
-                    <p>대시보드에서 분석된 데이터를 손쉽게 관리하세요.</p>
-                </div>
-            </section>
+            {/* Content */}
+            <div style={styles.content}>
+                <header style={styles.hero}>
+                    <h1 style={styles.title}>AI-Powered Automation<br />for Every Decision</h1>
+                    <p style={styles.subtitle}>
+                        건축/건설 도면의 텍스트, 심볼, 테이블 정보를<br />
+                        AI로 즉시 추출하고 데이터 자산으로 변환하십시오.
+                    </p>
+                    <div style={styles.actions}>
+                        <Link to="/upload" style={styles.primaryButton}>
+                            Get Started
+                        </Link>
+                        <Link to="/dashboard" style={styles.secondaryButton}>
+                            Dashboard
+                        </Link>
+                    </div>
+                </header>
+
+                {/* Features Section - Moved below or can be hidden. 
+                   For now, let's keep it but maybe style it differently or just hide it? 
+                   The user asked for "Palantir style" which is often just the hero.
+                   I will comment it out effectively by not rendering it, 
+                   or I can render it below the fold. 
+                   Let's render it but styled to overlap or be discreet.
+                   Actually, let's keep the focus on the hero video as requested.
+                */}
+            </div>
         </div>
     );
 }
 
 const styles: Record<string, React.CSSProperties> = {
     container: {
-        minHeight: 'calc(100vh - 60px)', // Header height assumed ~60px
+        position: 'relative',
+        width: '100%',
+        height: 'calc(100vh - 60px)', // Adjust based on header height
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontFamily: '"Inter", sans-serif',
+        backgroundColor: '#111', // Fallback color
+    },
+    videoBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        zIndex: 0,
+    },
+    overlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0, 0, 0, 0.65)', // Dark overlay for contrast
+        zIndex: 1,
+    },
+    content: {
+        position: 'relative',
+        zIndex: 2,
+        width: '100%',
+        maxWidth: '1200px',
+        padding: '0 20px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        background: '#f7f9fc',
-        fontFamily: '"Inter", sans-serif',
     },
     hero: {
         textAlign: 'center',
-        padding: '80px 20px',
-        maxWidth: '800px',
+        maxWidth: '900px',
     },
     title: {
-        fontSize: '48px',
-        fontWeight: '800',
-        color: '#1e293b',
+        fontSize: '3.5rem', // Large, impactful size
+        fontWeight: '700',
+        color: '#ffffff',
         marginBottom: '24px',
-        letterSpacing: '-1px',
+        letterSpacing: '-0.02em',
+        lineHeight: '1.1',
     },
     subtitle: {
-        fontSize: '20px',
-        color: '#64748b',
+        fontSize: '1.25rem',
+        color: '#d1d5db', // Light gray text
         lineHeight: '1.6',
-        marginBottom: '40px',
+        marginBottom: '48px',
+        fontWeight: '400',
     },
     actions: {
         display: 'flex',
-        gap: '16px',
+        gap: '24px',
         justifyContent: 'center',
     },
     primaryButton: {
-        padding: '14px 32px',
-        fontSize: '18px',
+        padding: '16px 40px',
+        fontSize: '16px',
         fontWeight: '600',
-        color: 'white',
-        backgroundColor: '#dc2e2e',
-        borderRadius: '8px',
+        color: '#000',
+        backgroundColor: '#ffffff', // White button
+        borderRadius: '4px', // Squares styling like Palantir
         textDecoration: 'none',
-        boxShadow: '0 4px 6px -1px rgba(220, 46, 46, 0.2)',
-        transition: 'transform 0.2s',
+        transition: 'all 0.2s ease',
+        border: '1px solid #ffffff',
+        cursor: 'pointer',
     },
     secondaryButton: {
-        padding: '14px 32px',
-        fontSize: '18px',
+        padding: '16px 40px',
+        fontSize: '16px',
         fontWeight: '600',
-        color: '#1e293b',
-        backgroundColor: 'white',
-        borderRadius: '8px',
+        color: '#ffffff',
+        backgroundColor: 'transparent',
+        borderRadius: '4px',
         textDecoration: 'none',
-        border: '1px solid #e2e8f0',
-        transition: 'background-color 0.2s',
-    },
-    features: {
-        display: 'flex',
-        gap: '30px',
-        padding: '40px 20px',
-        maxWidth: '1200px',
-        width: '100%',
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-    },
-    featureCard: {
-        flex: '1 1 300px',
-        background: 'white',
-        padding: '32px',
-        borderRadius: '16px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-        textAlign: 'center',
-        maxWidth: '350px',
-    },
-    icon: {
-        fontSize: '40px',
-        marginBottom: '16px',
+        border: '1px solid #ffffff', // White border
+        transition: 'all 0.2s ease',
+        cursor: 'pointer',
     },
 };

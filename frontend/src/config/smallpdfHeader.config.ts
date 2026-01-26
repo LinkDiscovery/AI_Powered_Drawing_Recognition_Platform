@@ -144,6 +144,7 @@ export const smallpdfHeaderConfig: SmallpdfHeaderConfig = {
   primaryTabs: [
     { id: 'tab-upload', label: '파일 업로드', href: '/upload' },
     { id: 'tab-preview', label: '미리보기', href: '/preview' },
+    { id: 'tab-ai-recognition', label: 'AI인식', href: '/ai-recognition' },
     { id: 'tab-dashboard', label: '도면 보관함', href: '/dashboard' },
   ],
 
