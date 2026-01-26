@@ -16,7 +16,6 @@ public class JwtUtil {
     private final Key key;
     private final long EXPIRATION_TIME = 30 * 60 * 1000; // 30 minutes
 
-    // Constructor Injection handles @Value resolution and initialization
     public JwtUtil(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
@@ -37,5 +36,18 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    // Add missing method
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(key)
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

@@ -4,6 +4,7 @@ import RootLayout from './layouts/RootLayout';
 import HomePage from './pages/home/HomePage';
 import UploadPage from './pages/upload/UploadPage';
 import PreviewPage from './pages/preview/PreviewPage';
+import AiRecognitionPage from './pages/ai-recognition/AiRecognitionPage';
 import UserDashboard from './pages/dashboard/UserDashboard';
 
 export const router = createBrowserRouter([
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'upload', element: <UploadPage /> },
       { path: 'preview', element: <PreviewPage /> },
+      { path: 'ai-recognition', element: <AiRecognitionPage /> },
       { path: 'dashboard', element: <UserDashboard /> },
       // { path: 'pricing', element: <PricingPage /> },
       // { path: 'teams', element: <TeamsPage /> },

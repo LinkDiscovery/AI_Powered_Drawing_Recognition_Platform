@@ -20,6 +20,7 @@ type PdfViewerProps = {
   initialRotation?: number; // New Prop
   activeTool: ToolType; // New Prop
   onToolChange: (tool: ToolType) => void; // New Prop (though mainly controlled by parent)
+  onBBoxChange?: (bboxes: BBox[]) => void; // New Prop for syncing state
 };
 
 // Button Styles
@@ -107,7 +108,7 @@ const transformRect = (
   return { ...r };
 };
 
-export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange }: PdfViewerProps) {
+export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange, onBBoxChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null); // PDF Document Proxy
@@ -183,6 +184,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
       }]);
     } else {
       setBBoxes([]);
+      onBBoxChange?.([]);
     }
   }, [initialSelection, initialBBoxes, file]);
 
@@ -303,7 +305,9 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
     // 2. Merge with other pages
     setBBoxes(prev => {
       const otherPages = prev.filter(b => (b.page || 1) !== page);
-      return [...otherPages, ...currentCallbackBBoxes];
+      const next = [...otherPages, ...currentCallbackBBoxes];
+      onBBoxChange?.(next); // Notify parent
+      return next;
     });
   };
 
@@ -447,7 +451,11 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
 
   // DELETE Handler
   const handleDeleteBBox = (id: string) => {
-    setBBoxes(prev => prev.filter(b => b.id !== id));
+    setBBoxes(prev => {
+      const next = prev.filter(b => b.id !== id);
+      onBBoxChange?.(next);
+      return next;
+    });
     if (selectedBBoxId === id) setSelectedBBoxId(null);
   };
 
