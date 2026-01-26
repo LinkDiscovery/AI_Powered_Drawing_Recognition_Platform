@@ -450,7 +450,7 @@ export default function AiRecognitionPage() {
 
                     {/* 결과 섹션 (조건부 렌더링) */}
                     {showResultForm && ocrResult && (
-                        <div className="ocr-results-section">
+                        <div className="ocr-results-section" ref={resultsRef}>
                             <div className="section-header">
                                 <h2><FileText size={18} /> 인식 결과</h2>
                                 <button onClick={() => setShowResultForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
