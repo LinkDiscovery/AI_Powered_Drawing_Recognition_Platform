@@ -40,7 +40,7 @@ public class FileController {
         this.userRepository = userRepository;
     }
 
-    @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/api/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> upload(@RequestParam("file") MultipartFile file,
             @org.springframework.web.bind.annotation.RequestHeader(value = "Authorization", required = false) String token)
             throws IOException {

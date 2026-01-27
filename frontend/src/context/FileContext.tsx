@@ -114,7 +114,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
 
         try {
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'http://localhost:8080/files', true);
+            xhr.open('POST', '/api/files', true);
             if (token) {
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             }
@@ -226,7 +226,7 @@ export function FileProvider({ children }: { children: ReactNode }) {
 
     async function claimFile(dbId: number) {
         if (!token) throw new Error("Login required");
-        const res = await fetch(`http://localhost:8080/api/files/${dbId}/assign`, {
+        const res = await fetch(`/api/files/${dbId}/assign`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });

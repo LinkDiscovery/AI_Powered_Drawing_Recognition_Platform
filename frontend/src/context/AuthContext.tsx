@@ -33,7 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const LOCAL_STORAGE_KEY = 'aidraw_auth_user';
 const TOKEN_KEY = 'aidraw_auth_token';
 // Point to Spring Boot Backend
-const API_SERVER = 'http://localhost:8080';
+const API_SERVER = '';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const login = async (email: string, password?: string) => {
         try {
-            const response = await fetch('http://localhost:8080/api/auth/login', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signup = async (email: string, name: string, password?: string) => {
         try {
-            const response = await fetch('http://localhost:8080/api/auth/signup', {
+            const response = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, name })
@@ -228,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            const response = await fetch('http://localhost:8080/api/auth/google', {
+            const response = await fetch('/api/auth/google', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token })
@@ -256,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token) return;
 
         try {
-            const response = await fetch('http://localhost:8080/api/auth/refresh', {
+            const response = await fetch('/api/auth/refresh', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -228,7 +228,7 @@ export default function PreviewPage() {
                                         };
 
                                         try {
-                                            const res = await fetch(`http://localhost:8080/api/files/${activeItem.dbId}/coordinates`, {
+                                            const res = await fetch(`/api/files/${activeItem.dbId}/coordinates`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Content-Type': 'application/json',

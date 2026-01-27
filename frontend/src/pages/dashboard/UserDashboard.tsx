@@ -94,8 +94,8 @@ const UserDashboard = () => {
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            let filesUrl = 'http://localhost:8080/api/user/files';
-            const foldersUrl = 'http://localhost:8080/api/folders';
+            let filesUrl = '/api/user/files';
+            const foldersUrl = '/api/folders';
 
             const isTrash = activeNav === 'trash';
             const fileParams = new URLSearchParams();
@@ -113,7 +113,7 @@ const UserDashboard = () => {
                         folderParams.append('parentId', currentFolderId.toString());
                     } else {
                         // Root
-                        filesUrl = 'http://localhost:8080/api/user/drive/files';
+                        filesUrl = '/api/user/drive/files';
                     }
                 }
             }
@@ -142,7 +142,7 @@ const UserDashboard = () => {
     const handleCreateFolder = async () => {
         if (!newFolderName.trim() || !token) return;
         try {
-            const res = await fetch('http://localhost:8080/api/folders', {
+            const res = await fetch('/api/folders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -186,13 +186,13 @@ const UserDashboard = () => {
             const headers = { 'Authorization': `Bearer ${token}` };
 
             // 1. Fetch File Details WITH BBoxes
-            const fileDetailsRes = await fetch(`http://localhost:8080/api/files/${file.id}`, { headers });
+            const fileDetailsRes = await fetch(`/api/files/${file.id}`, { headers });
             if (!fileDetailsRes.ok) throw new Error('Failed to fetch file details');
             const fileDetails = await fileDetailsRes.json();
             // console.log('File with BBoxes:', fileDetails);
 
             // 2. Download File Blob
-            const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, { headers });
+            const res = await fetch(`/api/files/${file.id}/download`, { headers });
             if (!res.ok) throw new Error('Download failed');
             const blob = await res.blob();
             const fileObj = new File([blob], file.name, { type: blob.type });
@@ -234,7 +234,7 @@ const UserDashboard = () => {
 
         const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}/trash`;
         try {
-            const res = await fetch(`http://localhost:8080${endpoint}`, {
+            const res = await fetch(endpoint, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -252,7 +252,7 @@ const UserDashboard = () => {
 
         const endpoint = type === 'file' ? `/api/files/${id}/restore` : `/api/folders/${id}/restore`;
         try {
-            const res = await fetch(`http://localhost:8080${endpoint}`, {
+            const res = await fetch(endpoint, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -273,7 +273,7 @@ const UserDashboard = () => {
 
         const endpoint = type === 'file' ? `/api/files/${id}` : `/api/folders/${id}`;
         try {
-            const res = await fetch(`http://localhost:8080${endpoint}`, {
+            const res = await fetch(endpoint, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -317,7 +317,7 @@ const UserDashboard = () => {
             : `/api/folders/${id}/move`;
 
         try {
-            const res = await fetch(`http://localhost:8080${endpoint}`, {
+            const res = await fetch(endpoint, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

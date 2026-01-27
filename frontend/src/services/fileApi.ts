@@ -1,6 +1,6 @@
 import type { UserFile, BBox, Folder } from '../types/api';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 
 // Helper to get auth header
 const getAuthHeader = (token: string) => ({
@@ -15,7 +15,7 @@ export const fileApi = {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${API_BASE}/../files`, {
+        const response = await fetch(`${API_BASE}/files`, {
             method: 'POST',
             headers: getAuthHeader(token),
             body: formData

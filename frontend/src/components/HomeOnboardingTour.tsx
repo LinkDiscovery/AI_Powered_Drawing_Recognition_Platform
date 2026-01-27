@@ -57,7 +57,7 @@ const HomeOnboardingTour = () => {
             setRun(false);
             if (token) {
                 try {
-                    await fetch('http://localhost:8080/api/user/tour-complete', {
+                    await fetch('/api/user/tour-complete', {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`,
