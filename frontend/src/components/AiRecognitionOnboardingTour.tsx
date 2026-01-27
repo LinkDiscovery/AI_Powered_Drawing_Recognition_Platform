@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import Joyride, { STATUS, type CallBackProps } from 'react-joyride';
+import Joyride, { STATUS, EVENTS, type CallBackProps } from 'react-joyride';
 import { useAuth } from '../context/AuthContext';
 import { tourStyles, tourLocale, commonTourProps } from './tourConfig';
 
 const AiRecognitionOnboardingTour = () => {
+    const { user, token, syncUserProfile } = useAuth();
     const [run, setRun] = useState(false);
-    const [tourKey, setTourKey] = useState(0);
-    const { user } = useAuth();
+    const [stepIndex, setStepIndex] = useState(0);
 
     const steps = [
         {
@@ -33,57 +33,58 @@ const AiRecognitionOnboardingTour = () => {
     ];
 
     useEffect(() => {
-        console.log('AiRecognitionOnboardingTour mounted');
-        const hasSeenTour = localStorage.getItem('hasSeenTour_aiRecognition');
-
-        // Force tour for test@example.com regardless of localStorage
-        const shouldRun = !hasSeenTour || (user?.email === 'test@example.com');
-
-        let timer: number | undefined;
-        if (shouldRun) {
-            // Simple delay only, no manual scrolling
-            timer = setTimeout(() => {
-                console.log('Auto-starting AI Recognition tour');
+        // Run ONLY if logged in AND has not seen tour (DB flag)
+        // Run if logged in AND (hasSeenTour is false OR undefined/null)
+        if (user && !user.hasSeenTour) {
+            // Delay slightly to ensure UI is ready
+            const timer = setTimeout(() => {
                 setRun(true);
             }, 1000);
+            return () => clearTimeout(timer);
         }
-
-        // ALWAYS set up the event listener for restart
-        const handleRestart = () => {
-            console.log('AI Recognition tour restart triggered');
-            localStorage.removeItem('hasSeenTour_aiRecognition');
-            setRun(false);
-            setTimeout(() => {
-                setTourKey(prev => prev + 1);
-                setRun(true);
-            }, 50);
-        };
-        window.addEventListener('restart-airecognition-tour', handleRestart);
-
-        return () => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-            window.removeEventListener('restart-airecognition-tour', handleRestart);
-        };
-
     }, [user]);
 
-    const handleTourEnd = (data: CallBackProps) => {
-        const { status } = data;
-        const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
-        if (finishedStatuses.includes(status)) {
-            localStorage.setItem('hasSeenTour_aiRecognition', 'true');
+    useEffect(() => {
+        const handleRestart = () => {
+            setRun(true);
+            setStepIndex(0);
+        };
+        window.addEventListener('restart-airecognition-tour', handleRestart);
+        return () => window.removeEventListener('restart-airecognition-tour', handleRestart);
+    }, []);
+
+    const handleJoyrideCallback = async (data: CallBackProps) => {
+        const { status, type, index } = data;
+
+        if (([STATUS.FINISHED, STATUS.SKIPPED] as string[]).includes(status)) {
             setRun(false);
+
+            // Call API to mark tour as seen
+            if (token) {
+                try {
+                    await fetch('http://localhost:8080/api/user/tour-complete', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    await syncUserProfile();
+                } catch (error) {
+                    console.error("Failed to mark tour complete:", error);
+                }
+            }
+        } else if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+            setStepIndex(index + (type === EVENTS.TARGET_NOT_FOUND ? -1 : 1));
         }
     };
 
     return (
         <Joyride
-            key={tourKey}
             steps={steps}
             run={run}
-            callback={handleTourEnd}
+            stepIndex={stepIndex}
+            callback={handleJoyrideCallback}
             {...commonTourProps}
             styles={tourStyles}
             locale={tourLocale}

@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import Joyride, { STATUS, type CallBackProps } from 'react-joyride';
+import Joyride, { STATUS, EVENTS, type CallBackProps } from 'react-joyride';
 import { useAuth } from '../context/AuthContext';
 import { useFiles } from '../context/FileContext';
 import { tourStyles, tourLocale, commonTourProps } from './tourConfig';
 
 const UploadOnboardingTour = () => {
+    const { user, token, syncUserProfile } = useAuth();
+    const { hasItems } = useFiles();
     const [run, setRun] = useState(false);
-    const [tourKey, setTourKey] = useState(0);
-    const { user } = useAuth();
-    const { hasItems } = useFiles(); // Check if file list is shown
+    const [stepIndex, setStepIndex] = useState(0);
 
     // Define steps based on state (Empty vs Has Items)
-    // For now, let's focus on the initial dropzone experience
     const steps = hasItems ? [
         {
             target: '#uploader-list-card',
@@ -29,55 +28,53 @@ const UploadOnboardingTour = () => {
     ];
 
     useEffect(() => {
-        const hasSeenTour = localStorage.getItem('hasSeenTour_upload');
-
-        // Force tour for test@example.com regardless of localStorage
-        const shouldRun = !hasSeenTour || (user?.email === 'test@example.com');
-
-        let timer: number | undefined;
-        if (shouldRun) {
-            // Simple delay only, no manual scrolling
-            timer = setTimeout(() => {
+        if (user && !user.hasSeenTour) {
+            const timer = setTimeout(() => {
                 setRun(true);
             }, 1000);
+            return () => clearTimeout(timer);
         }
+    }, [user]);
 
-        // ALWAYS set up the event listener for restart
+    useEffect(() => {
         const handleRestart = () => {
-            console.log('Upload tour restart triggered');
-            localStorage.removeItem('hasSeenTour_upload');
-            setRun(false);
-            setTimeout(() => {
-                setTourKey(prev => prev + 1);
-                setRun(true);
-            }, 50);
+            setRun(true);
+            setStepIndex(0);
         };
         window.addEventListener('restart-upload-tour', handleRestart);
+        return () => window.removeEventListener('restart-upload-tour', handleRestart);
+    }, []);
 
-        return () => {
-            if (timer) {
-                clearTimeout(timer);
-            }
-            window.removeEventListener('restart-upload-tour', handleRestart);
-        };
+    const handleJoyrideCallback = async (data: CallBackProps) => {
+        const { status, type, index } = data;
 
-    }, [user, hasItems]); // Re-run if state changes (e.g. user drops a file, though usually we only show once)
-
-    const handleTourEnd = (data: CallBackProps) => {
-        const { status } = data;
-        const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
-        if (finishedStatuses.includes(status)) {
-            localStorage.setItem('hasSeenTour_upload', 'true');
+        if (([STATUS.FINISHED, STATUS.SKIPPED] as string[]).includes(status)) {
             setRun(false);
+            if (token) {
+                try {
+                    await fetch('http://localhost:8080/api/user/tour-complete', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    await syncUserProfile();
+                } catch (error) {
+                    console.error("Failed to mark tour complete:", error);
+                }
+            }
+        } else if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
+            setStepIndex(index + (type === EVENTS.TARGET_NOT_FOUND ? -1 : 1));
         }
     };
 
     return (
         <Joyride
-            key={tourKey}
             steps={steps}
             run={run}
-            callback={handleTourEnd}
+            stepIndex={stepIndex}
+            callback={handleJoyrideCallback}
             {...commonTourProps}
             styles={tourStyles}
             locale={tourLocale}

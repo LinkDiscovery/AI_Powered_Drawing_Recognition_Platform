@@ -8,6 +8,7 @@ export interface User {
     email: string;
     name: string;
     plan: 'free' | 'pro';
+    hasSeenTour?: boolean;
 }
 
 interface AuthContextType {
@@ -24,24 +25,87 @@ interface AuthContextType {
     openLoginModal: () => void;
     closeLoginModal: () => void;
     isLoading: boolean;
+    syncUserProfile: () => Promise<void>; // Added for syncUserProfile
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY = 'aidraw_auth_user';
 const TOKEN_KEY = 'aidraw_auth_token';
+// Point to Spring Boot Backend
+const API_SERVER = 'http://localhost:8080';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const { showToast } = useToast();
+    const navigate = useNavigate();
 
     const openLoginModal = () => setIsLoginModalOpen(true);
     const closeLoginModal = () => setIsLoginModalOpen(false);
 
+    const updateUser = (newUser: User) => {
+        setUser(newUser);
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newUser));
+    };
 
+    const syncUserProfile = async () => {
+        const storedToken = localStorage.getItem(TOKEN_KEY);
+        if (!storedToken) return;
+
+        try {
+            const response = await fetch(`${API_SERVER}/api/user/me`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${storedToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const detailedUser = await response.json();
+                setUser(prev => {
+                    if (!prev) return prev;
+                    // Only update if hasSeenTour is different to avoid unnecessary re-renders/localStorage writes
+                    if (prev.hasSeenTour === detailedUser.hasSeenTour) return prev;
+
+                    const updated = { ...prev, hasSeenTour: detailedUser.hasSeenTour };
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
+                    return updated;
+                });
+            } else {
+                console.warn("Failed to sync user profile with server");
+            }
+        } catch (error) {
+            console.error("Error syncing user profile:", error);
+        }
+    };
+
+    const saveUser = (userData: User, authToken: string) => {
+        updateUser(userData);
+        setToken(authToken);
+        localStorage.setItem(TOKEN_KEY, authToken);
+        try {
+            const decoded: any = jwtDecode(authToken);
+            if (decoded.exp) {
+                setExpiresAt(decoded.exp);
+            }
+        } catch (e) {
+            console.error("Failed to decode token after login/signup", e);
+        }
+    };
+
+    const logout = () => {
+        setUser(null);
+        setToken(null);
+        setExpiresAt(null);
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        localStorage.removeItem(TOKEN_KEY);
+        navigate('/');
+    };
 
     // Load user from localStorage on mount
     useEffect(() => {
@@ -52,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             try {
                 const parsedUser = JSON.parse(storedUser);
                 setUser(parsedUser);
+                setToken(storedToken);
 
                 // Decode token to get expiration
                 try {
@@ -254,30 +319,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, [user]);
 
-    const navigate = useNavigate();
 
-    const logout = () => {
-        setUser(null);
-        setExpiresAt(null);
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-        localStorage.removeItem(TOKEN_KEY);
-        navigate('/');
-    };
-
-    const saveUser = (u: User, token: string) => {
-        setUser(u);
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(u));
-        localStorage.setItem(TOKEN_KEY, token);
-
-        try {
-            const decoded: any = jwtDecode(token);
-            if (decoded.exp) {
-                setExpiresAt(decoded.exp);
-            }
-        } catch (e) {
-            console.error("Invalid token format", e);
-        }
-    };
 
     const value = {
         user,
@@ -292,7 +334,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoginModalOpen,
         openLoginModal,
         closeLoginModal,
-        isLoading
+        isLoading,
+        updateUser,
+        syncUserProfile
     };
 
     return (
