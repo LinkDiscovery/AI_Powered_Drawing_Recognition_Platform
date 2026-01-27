@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Joyride, { STATUS, EVENTS, type CallBackProps } from 'react-joyride';
+import Joyride, { STATUS, EVENTS, ACTIONS, type CallBackProps } from 'react-joyride';
 import { useAuth } from '../context/AuthContext';
 import { tourStyles, tourLocale, commonTourProps } from './tourConfig';
 
@@ -54,7 +54,7 @@ const AiRecognitionOnboardingTour = () => {
     }, []);
 
     const handleJoyrideCallback = async (data: CallBackProps) => {
-        const { status, type, index } = data;
+        const { status, type, index, action } = data;
 
         if (([STATUS.FINISHED, STATUS.SKIPPED] as string[]).includes(status)) {
             setRun(false);
@@ -75,7 +75,8 @@ const AiRecognitionOnboardingTour = () => {
                 }
             }
         } else if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
-            setStepIndex(index + (type === EVENTS.TARGET_NOT_FOUND ? -1 : 1));
+            const nextStepIndex = index + (action === ACTIONS.PREV ? -1 : 1);
+            setStepIndex(nextStepIndex);
         }
     };
 
