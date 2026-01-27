@@ -39,6 +39,9 @@ public class UserFile {
     @Column(nullable = false)
     private Integer rotation = 0;
 
+    @Column(nullable = true)
+    private LocalDateTime trashedAt;
+
     // Constructor, Getters and Setters
 
     public UserFile() {
@@ -119,5 +122,21 @@ public class UserFile {
 
     public void setRotation(Integer rotation) {
         this.rotation = rotation;
+    }
+
+    public boolean isTrashed() {
+        return isTrashed;
+    }
+
+    public void setTrashed(boolean trashed) {
+        isTrashed = trashed;
+    }
+
+    public LocalDateTime getTrashedAt() {
+        return trashedAt;
+    }
+
+    public void setTrashedAt(LocalDateTime trashedAt) {
+        this.trashedAt = trashedAt;
     }
 }
