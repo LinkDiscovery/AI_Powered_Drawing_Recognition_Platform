@@ -1,6 +1,5 @@
 package com.example.demo.client;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
@@ -53,6 +52,18 @@ public class AIServiceClient {
      * @throws AIServiceException if the OCR request fails
      */
     public OcrResult extractText(File imageFile) throws AIServiceException {
+        return extractText(imageFile, 0);
+    }
+
+    /**
+     * Extract text from an image file using OCR with rotation
+     * 
+     * @param imageFile The image file to process
+     * @param rotation  Image rotation in degrees (0, 90, 180, 270)
+     * @return OCR result containing detected text and bounding boxes
+     * @throws AIServiceException if the OCR request fails
+     */
+    public OcrResult extractText(File imageFile, int rotation) throws AIServiceException {
         try {
             String url = aiServerUrl + "/api/ocr/extract";
 
@@ -62,6 +73,7 @@ public class AIServiceClient {
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new FileSystemResource(imageFile));
+            body.add("rotation", String.valueOf(rotation));
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
@@ -90,43 +102,63 @@ public class AIServiceClient {
     }
 
     public static class OcrResult {
-        @JsonProperty("detected_texts")
-        private List<DetectedText> detectedTexts;
+        private boolean success;
+        private OcrData data;
 
-        @JsonProperty("full_text")
-        private String fullText;
-
-        @JsonProperty("processing_time")
-        private Double processingTime;
-
-        public List<DetectedText> getDetectedTexts() {
-            return detectedTexts;
+        public boolean isSuccess() {
+            return success;
         }
 
-        public void setDetectedTexts(List<DetectedText> detectedTexts) {
-            this.detectedTexts = detectedTexts;
+        public void setSuccess(boolean success) {
+            this.success = success;
+        }
+
+        public OcrData getData() {
+            return data;
+        }
+
+        public void setData(OcrData data) {
+            this.data = data;
         }
 
         public String getFullText() {
-            return fullText;
-        }
-
-        public void setFullText(String fullText) {
-            this.fullText = fullText;
-        }
-
-        public Double getProcessingTime() {
-            return processingTime;
-        }
-
-        public void setProcessingTime(Double processingTime) {
-            this.processingTime = processingTime;
+            return data != null ? data.getText() : "";
         }
     }
 
-    public static class DetectedText {
+    public static class OcrData {
         private String text;
-        private BoundingBox bbox;
+        private Double confidence;
+        private List<OcrDetail> details;
+
+        public String getText() {
+            return text != null ? text : "";
+        }
+
+        public void setText(String text) {
+            this.text = text;
+        }
+
+        public Double getConfidence() {
+            return confidence;
+        }
+
+        public void setConfidence(Double confidence) {
+            this.confidence = confidence;
+        }
+
+        public List<OcrDetail> getDetails() {
+            return details;
+        }
+
+        public void setDetails(List<OcrDetail> details) {
+            this.details = details;
+        }
+    }
+
+    public static class OcrDetail {
+        private String text;
+        private List<List<Integer>> bbox;
         private Double confidence;
 
         public String getText() {
@@ -137,11 +169,11 @@ public class AIServiceClient {
             this.text = text;
         }
 
-        public BoundingBox getBbox() {
+        public List<List<Integer>> getBbox() {
             return bbox;
         }
 
-        public void setBbox(BoundingBox bbox) {
+        public void setBbox(List<List<Integer>> bbox) {
             this.bbox = bbox;
         }
 
@@ -151,52 +183,6 @@ public class AIServiceClient {
 
         public void setConfidence(Double confidence) {
             this.confidence = confidence;
-        }
-    }
-
-    public static class BoundingBox {
-        @JsonProperty("x_min")
-        private Integer xMin;
-
-        @JsonProperty("y_min")
-        private Integer yMin;
-
-        @JsonProperty("x_max")
-        private Integer xMax;
-
-        @JsonProperty("y_max")
-        private Integer yMax;
-
-        public Integer getxMin() {
-            return xMin;
-        }
-
-        public void setxMin(Integer xMin) {
-            this.xMin = xMin;
-        }
-
-        public Integer getyMin() {
-            return yMin;
-        }
-
-        public void setyMin(Integer yMin) {
-            this.yMin = yMin;
-        }
-
-        public Integer getxMax() {
-            return xMax;
-        }
-
-        public void setxMax(Integer xMax) {
-            this.xMax = xMax;
-        }
-
-        public Integer getyMax() {
-            return yMax;
-        }
-
-        public void setyMax(Integer yMax) {
-            this.yMax = yMax;
         }
     }
 

@@ -33,7 +33,7 @@ type SourceTab = 'preview' | 'storage';
 
 export default function AiRecognitionPage() {
     const location = useLocation();
-    const { user, token, openLoginModal } = useAuth();
+    const { user, token, openLoginModal, isLoading: isAuthLoading } = useAuth();
 
     // 상태 관리
     const [activeTab, setActiveTab] = useState<SourceTab>('storage');
@@ -55,16 +55,17 @@ export default function AiRecognitionPage() {
 
     // PDF 뷰어 상태
     const [activeTool, setActiveTool] = useState<ToolType>('none');
+    const [currentRotation, setCurrentRotation] = useState<number>(0); // OCR rotation
 
     // Ref for auto-scroll to results
     const resultsRef = React.useRef<HTMLDivElement>(null);
 
     // 로그인 확인
     useEffect(() => {
-        if (!user) {
+        if (!isAuthLoading && !user) {
             openLoginModal();
         }
-    }, [user, openLoginModal]);
+    }, [user, isAuthLoading, openLoginModal]);
 
     // 파일 목록 로드
     useEffect(() => {
@@ -179,8 +180,15 @@ export default function AiRecognitionPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             let bboxes: BBox[] = [];
+            let fileRotation = 0;  // Default rotation
             if (detailRes.ok) {
                 const detailData = await detailRes.json();
+
+                // Get file-level rotation
+                if (detailData.rotation !== undefined && detailData.rotation !== null) {
+                    fileRotation = detailData.rotation;
+                }
+
                 if (detailData.bboxes && Array.isArray(detailData.bboxes)) {
                     // Backend BBox: { id, x, y, width, height, type, page, frontendId }
                     // Frontend BBox: { id, rect: { x, y, width, height }, type, page }
@@ -198,6 +206,8 @@ export default function AiRecognitionPage() {
                 }
             }
 
+            // Set rotation first so PdfViewer gets correct initial value
+            setCurrentRotation(fileRotation);
             setSelectedFileBlob(fileObj);
             setInitialBBoxes(bboxes);
             setCurrentBBoxes(bboxes);
@@ -239,7 +249,8 @@ export default function AiRecognitionPage() {
                 width: titleBox.rect.width,
                 height: titleBox.rect.height,
                 page: titleBox.page || 1,
-                type: titleBox.type
+                type: titleBox.type,
+                rotation: currentRotation  // Include rotation for vertical text OCR
             };
 
             const response = await fetch(`/api/ocr/process/${selectedFile.id}`, {
@@ -453,7 +464,9 @@ export default function AiRecognitionPage() {
                                         activeTool={activeTool}
                                         onToolChange={setActiveTool}
                                         initialBBoxes={initialBBoxes}
+                                        initialRotation={currentRotation}
                                         onBBoxChange={setCurrentBBoxes}
+                                        onRotationChange={setCurrentRotation}
                                     />
                                 </div>
                             ) : (
@@ -468,6 +481,29 @@ export default function AiRecognitionPage() {
 
                         {/* OCR 컨트롤 */}
                         <div className="ocr-controls">
+                            {/* Rotation selector synced with PDF viewer rotation button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+                                <label style={{ fontSize: '13px', color: '#6B7280', whiteSpace: 'nowrap' }} title="PDF 뷰어의 회전 버튼(↻)과 연동됩니다">
+                                    OCR 회전:
+                                </label>
+                                <select
+                                    value={currentRotation}
+                                    onChange={(e) => setCurrentRotation(Number(e.target.value))}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #D1D5DB',
+                                        fontSize: '13px',
+                                        backgroundColor: 'white',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value={0}>0° (가로)</option>
+                                    <option value={90}>90° (세로↑)</option>
+                                    <option value={180}>180°</option>
+                                    <option value={270}>270° (세로↓)</option>
+                                </select>
+                            </div>
                             <button
                                 className="btn-primary"
                                 disabled={!selectedFileBlob || isFileLoading || isProcessing}

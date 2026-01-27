@@ -35,7 +35,8 @@ async def extract_text(
     y: Optional[int] = Form(None),
     width: Optional[int] = Form(None),
     height: Optional[int] = Form(None),
-    page: Optional[int] = Form(1)
+    page: Optional[int] = Form(1),
+    rotation: Optional[int] = Form(0)  # 0, 90, 180, 270 degrees
 ):
     """
     Extract text from uploaded image
@@ -44,12 +45,13 @@ async def extract_text(
         file: Uploaded image file
         x, y, width, height: Optional bounding box coordinates
         page: Page number (for PDF, not implemented yet)
+        rotation: Image rotation in degrees (0, 90, 180, 270)
     
     Returns:
         JSON response with extracted text and metadata
     """
     try:
-        logger.info(f"Received OCR request for file: {file.filename}")
+        logger.info(f"Received OCR request for file: {file.filename}, rotation: {rotation}")
         
         # Read file
         contents = await file.read()
@@ -87,6 +89,22 @@ async def extract_text(
             
             img_array = img_array[y:y+height, x:x+width]
             logger.debug(f"Cropped image shape: {img_array.shape}")
+        
+        # Apply rotation if specified (matches PDF viewer's clockwise rotation)
+        if rotation and rotation != 0:
+            rotation = rotation % 360  # Normalize to 0-359
+            logger.info(f"Rotating image by {rotation} degrees (clockwise)")
+            
+            if rotation == 90:
+                # 90° clockwise rotation
+                img_array = cv2.rotate(img_array, cv2.ROTATE_90_CLOCKWISE)
+            elif rotation == 180:
+                img_array = cv2.rotate(img_array, cv2.ROTATE_180)
+            elif rotation == 270:
+                # 270° clockwise = 90° counterclockwise
+                img_array = cv2.rotate(img_array, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            
+            logger.debug(f"Rotated image shape: {img_array.shape}")
         
         # Perform OCR
         result = ocr_model.extract_text(img_array, detail=1)

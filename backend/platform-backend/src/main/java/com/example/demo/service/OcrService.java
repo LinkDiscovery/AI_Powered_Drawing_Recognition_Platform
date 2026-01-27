@@ -78,8 +78,11 @@ public class OcrService {
             File tempImageFile = tempImagePath.toFile();
             ImageIO.write(image, "png", tempImageFile);
 
-            // Call Python OCR server
-            AIServiceClient.OcrResult result = aiServiceClient.extractText(tempImageFile);
+            // Get rotation from BBox (default to 0 if null)
+            int rotation = (bbox.getRotation() != null) ? bbox.getRotation() : 0;
+
+            // Call Python OCR server with rotation
+            AIServiceClient.OcrResult result = aiServiceClient.extractText(tempImageFile, rotation);
 
             // Return full text from OCR result
             return result.getFullText();

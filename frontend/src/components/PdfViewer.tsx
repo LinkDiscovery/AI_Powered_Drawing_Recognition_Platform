@@ -21,6 +21,7 @@ type PdfViewerProps = {
   activeTool: ToolType; // New Prop
   onToolChange: (tool: ToolType) => void; // New Prop (though mainly controlled by parent)
   onBBoxChange?: (bboxes: BBox[]) => void; // New Prop for syncing state
+  onRotationChange?: (rotation: number) => void; // Sync rotation with parent
 };
 
 // Button Styles
@@ -108,7 +109,7 @@ const transformRect = (
   return { ...r };
 };
 
-export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange, onBBoxChange }: PdfViewerProps) {
+export default function PdfViewer({ file, onSaveSelection, initialSelection, initialBBoxes, initialRotation = 0, activeTool, onToolChange, onBBoxChange, onRotationChange }: PdfViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null); // PDF Document Proxy
@@ -530,7 +531,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={handleFitWidth} style={actionBtnStyle} title="폭 맞춤" onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg></button>
           <button onClick={handleFitHeight} style={actionBtnStyle} title="전체 보기 (높이 맞춤)" onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" /></svg></button>
-          <button onClick={() => setRotation(r => ((r + 90) % 360) as any)} style={actionBtnStyle} title="회전" onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>↻</button>
+          <button onClick={() => { const newRotation = ((rotation + 90) % 360); setRotation(newRotation); onRotationChange?.(newRotation); }} style={actionBtnStyle} title="회전" onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>↻</button>
           <button onClick={() => setIsMaximized(!isMaximized)} style={{ ...actionBtnStyle, width: 'auto', padding: '0 12px', fontSize: 13, fontWeight: 600 }} onMouseEnter={e => e.currentTarget.style.background = '#ebecf0'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>{isMaximized ? '축소' : '최대화'}</button>
         </div>
       </div>
