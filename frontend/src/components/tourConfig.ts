@@ -47,7 +47,7 @@ export const commonTourProps = {
     continuous: true,
     showSkipButton: true,
     showProgress: true,
-    disableScrolling: true,
+    disableScrolling: false, // Enable auto-scroll to tour steps
     disableOverlayClose: true,
     disableScrollParentFix: true,
     floaterProps: {

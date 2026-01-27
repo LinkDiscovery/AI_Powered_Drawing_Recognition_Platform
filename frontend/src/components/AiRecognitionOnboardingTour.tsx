@@ -29,7 +29,6 @@ const AiRecognitionOnboardingTour = () => {
             target: '.ocr-controls',
             content: '파일을 선택한 후 이 버튼을 눌러 AI 분석을 시작하세요. OCR 회전 각도도 조정할 수 있습니다.',
             placement: 'top' as const,
-            disableScrolling: false, // Scroll to this element
         },
     ];
 
