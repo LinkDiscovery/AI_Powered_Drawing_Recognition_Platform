@@ -380,10 +380,10 @@ export default function AiRecognitionPage() {
 
                         {/* 파일 목록 */}
                         <div className="file-list-container">
-                            {isLoading ? (
+                            {isAuthLoading || isLoading ? (
                                 <div className="empty-state">
                                     <div className="loading-spinner"></div>
-                                    <p>파일을 불러오는 중...</p>
+                                    <p>{isAuthLoading ? '로그인 확인 중...' : '파일을 불러오는 중...'}</p>
                                 </div>
                             ) : error ? (
                                 <div className="empty-state">
