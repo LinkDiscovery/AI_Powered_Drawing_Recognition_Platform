@@ -25,6 +25,11 @@ const HomeOnboardingTour = () => {
             content: '여기서 파일 업로드, AI인식, 도면 보관함 등 주요 기능에 접근할 수 있어요.',
             placement: 'bottom' as const,
         },
+        {
+            target: '.sp-help-btn',
+            content: '각 페이지에서 이 버튼(?)을 누르면 언제든지 해당 가이드를 다시 볼 수 있습니다.',
+            placement: 'left' as const,
+        },
     ];
 
     useEffect(() => {
