@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 // Removed DashboardSidebar import as it is now inlined for custom styling
@@ -286,8 +286,159 @@ const UserDashboard = () => {
         } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
     };
 
+    const [moveData, setMoveData] = useState<{ id: number, type: 'file' | 'folder' } | null>(null);
+    const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null);
+    const [draggedItem, setDraggedItem] = useState<{ id: number, type: 'file' | 'folder', name: string } | null>(null);
+    const dragLayerRef = useRef<HTMLDivElement>(null);
+
+    // Reset selection when modal opens/closes
+    useEffect(() => {
+        if (moveData) setSelectedTargetId(null);
+    }, [moveData]);
+
+    const executeMove = async () => {
+        if (!moveData || !token) return;
+
+        await performMove(moveData.id, moveData.type, selectedTargetId);
+        setMoveData(null);
+    };
+
+    const performMove = async (id: number, type: 'file' | 'folder', targetId: number | null) => {
+        if (!token) return;
+
+        // Circular check
+        if (type === 'folder' && id === targetId) {
+            alert('자신에게로 이동할 수 없습니다.');
+            return;
+        }
+
+        const endpoint = type === 'file'
+            ? `/api/files/${id}/move`
+            : `/api/folders/${id}/move`;
+
+        try {
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ targetFolderId: targetId })
+            });
+
+            if (res.ok) {
+                fetchData();
+            } else {
+                const msg = await res.text();
+                alert(`이동 실패: ${msg}`);
+            }
+        } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
+    };
+
+    const handleDragStart = (e: React.DragEvent, id: number, type: 'file' | 'folder', name: string) => {
+        e.dataTransfer.setData('application/json', JSON.stringify({ id, type }));
+        e.dataTransfer.effectAllowed = 'move';
+
+        // Set empty drag image to hide native ghost
+        const emptyImg = new Image();
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+
+        setDraggedItem({ id, type, name });
+    };
+
+    // Global drag over to track cursor position
+    const handleContainerDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); // Necessary to allow dropping anywhere (and track mouse)
+        // Direct DOM manipulation for performance (no re-renders)
+        if (draggedItem && dragLayerRef.current) {
+            const x = e.clientX + 12; // Offset right so cursor sits nicely next to it
+            const y = e.clientY;      // Align with cursor Y
+            // translateY(-50%) centers the element vertically on the cursor Y
+            dragLayerRef.current.style.transform = `translate(${x}px, ${y}px) translateY(-50%)`;
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation(); // Keep specific target active
+        e.dataTransfer.dropEffect = 'move';
+        e.currentTarget.classList.add('drag-over');
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.currentTarget.classList.remove('drag-over');
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetFolderId: number) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.currentTarget.classList.remove('drag-over');
+
+        const data = e.dataTransfer.getData('application/json');
+        if (!data) {
+            // Clean up if drop happened but no data (shouldn't happen with our D&D)
+            setDraggedItem(null);
+            return;
+        }
+
+        try {
+            const item = JSON.parse(data);
+            if (item.type === 'folder' && item.id === targetFolderId) {
+                setDraggedItem(null);
+                return; // Prevent self-drop
+            }
+
+            await performMove(item.id, item.type, targetFolderId);
+        } catch (err) {
+            console.error('Drop error', err);
+        } finally {
+            setDraggedItem(null);
+        }
+    };
+
+    // End drag if dropped outside or cancelled
+    const handleDragEnd = () => {
+        setDraggedItem(null);
+    };
+
     return (
-        <div className="dashboard-container">
+        <div
+            className="dashboard-container"
+            onDragOver={handleContainerDragOver}
+            onDragEnd={handleDragEnd}
+        >
+            {/* Custom Drag Layer */}
+            {draggedItem && (
+                <div
+                    ref={dragLayerRef}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        pointerEvents: 'none',
+                        zIndex: 9999,
+                        backgroundColor: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        border: '1px solid #E5E7EB',
+                        opacity: 1, // Explicitly opaque
+                        willChange: 'transform' // Hint for optimization
+                    }}
+                >
+                    {draggedItem.type === 'folder' ? (
+                        <FolderIcon size={20} className="text-gray-400" fill="currentColor" />
+                    ) : (
+                        <FileText size={20} className="text-red-500" />
+                    )}
+                    <span className="font-medium text-sm text-gray-900">{draggedItem.name}</span>
+                </div>
+            )}
+
             {/* Sidebar */}
             <div className="dashboard-sidebar">
                 <div className="sidebar-content">
@@ -335,6 +486,19 @@ const UserDashboard = () => {
                         <div
                             className={`nav-item ${activeNav === 'drive' ? 'active' : ''}`}
                             onClick={() => { setActiveNav('drive'); setCurrentFolderId(null); setFolderStack([{ id: null, name: '내 드라이브' }]); }}
+                            onDragOver={(e) => {
+                                if (activeNav === 'drive') {
+                                    handleDragOver(e);
+                                    e.currentTarget.classList.add('nav-drag-over'); // Keep specific class
+                                }
+                            }}
+                            onDragLeave={(e) => e.currentTarget.classList.remove('nav-drag-over')}
+                            onDrop={(e) => {
+                                if (activeNav === 'drive') {
+                                    e.currentTarget.classList.remove('nav-drag-over');
+                                    handleDrop(e, 0);
+                                }
+                            }}
                         >
                             <HardDrive size={18} />
                             <span>내 드라이브</span>
@@ -385,6 +549,18 @@ const UserDashboard = () => {
                                         setCurrentFolderId(null);
                                         setActiveNav('drive');
                                     }}
+                                    onDragOver={(e) => { handleDragOver(e); e.currentTarget.classList.add('drag-over-text'); }}
+                                    onDragLeave={(e) => e.currentTarget.classList.remove('drag-over-text')}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.currentTarget.classList.remove('drag-over-text');
+                                        // Drop on Root Breadcrumb
+                                        const data = e.dataTransfer.getData('application/json');
+                                        if (data) {
+                                            const item = JSON.parse(data);
+                                            performMove(item.id, item.type, null);
+                                        }
+                                    }}
                                 >
                                     내 드라이브
                                 </span>
@@ -394,6 +570,18 @@ const UserDashboard = () => {
                                         <span
                                             className={`nav-segment ${index === folderStack.length - 2 ? 'active' : ''}`}
                                             onClick={() => handleFolderClick(folder, true)}
+                                            onDragOver={(e) => { handleDragOver(e); e.currentTarget.classList.add('drag-over-text'); }}
+                                            onDragLeave={(e) => e.currentTarget.classList.remove('drag-over-text')}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                e.currentTarget.classList.remove('drag-over-text');
+                                                const data = e.dataTransfer.getData('application/json');
+                                                if (data) {
+                                                    const item = JSON.parse(data);
+                                                    if (item.type === 'folder' && item.id === folder.id) return;
+                                                    performMove(item.id, item.type, folder.id);
+                                                }
+                                            }}
                                         >
                                             {folder.name}
                                         </span>
@@ -444,6 +632,11 @@ const UserDashboard = () => {
                                     <div
                                         key={`folder-${folder.id}`}
                                         className="folder-card group"
+                                        draggable={!folder.trashed}
+                                        onDragStart={(e) => handleDragStart(e, folder.id, 'folder', folder.name)}
+                                        onDragOver={(e) => !folder.trashed && handleDragOver(e)}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={(e) => !folder.trashed && handleDrop(e, folder.id)}
                                         onDoubleClick={() => handleFolderClick(folder)}
                                     >
                                         <div className="folder-icon-wrapper">
@@ -451,6 +644,15 @@ const UserDashboard = () => {
                                         </div>
                                         <span className="folder-name">{folder.name}</span>
                                         <div className="card-actions">
+                                            {activeNav !== 'trash' && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMoveData({ id: folder.id, type: 'folder' }); }}
+                                                    className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                    title="이동"
+                                                >
+                                                    <FolderIcon size={16} /> {/* Move Icon substitute */}
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); moveToTrash(folder.id, 'folder'); }}
                                                 className="action-btn hover:text-red-500 hover:bg-red-50"
@@ -471,7 +673,12 @@ const UserDashboard = () => {
                         <div className={viewMode === 'grid' ? 'file-grid' : 'file-list'}>
                             {files && files.map(file => (
                                 viewMode === 'grid' ? (
-                                    <div key={file.id} className="group relative">
+                                    <div
+                                        key={file.id}
+                                        className="group relative"
+                                        draggable={!file.isTrashed}
+                                        onDragStart={(e) => handleDragStart(e, file.id, 'file', file.name)}
+                                    >
                                         <ProjectCard
                                             title={file.name}
                                             date={new Date(file.uploadTime).toLocaleDateString()}
@@ -497,12 +704,21 @@ const UserDashboard = () => {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
-                                                    className="action-btn hover:text-red-500 hover:bg-red-50"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setMoveData({ id: file.id, type: 'file' }); }}
+                                                        className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                        title="이동"
+                                                    >
+                                                        <FolderIcon size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="action-btn hover:text-red-500 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -511,6 +727,8 @@ const UserDashboard = () => {
                                         key={file.id}
                                         className="list-row group"
                                         onClick={() => handleFileClick(file)}
+                                        draggable={!file.isTrashed}
+                                        onDragStart={(e) => handleDragStart(e, file.id, 'file', file.name)}
                                     >
                                         <div className={`icon-wrapper-base ${file.name.toLowerCase().endsWith('.pdf') ? 'icon-pdf' : 'icon-image'}`}>
                                             {file.name.toLowerCase().endsWith('.pdf') ? (
@@ -543,6 +761,13 @@ const UserDashboard = () => {
                                                 </>
                                             ) : (
                                                 <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setMoveData({ id: file.id, type: 'file' }); }}
+                                                        className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                        title="이동"
+                                                    >
+                                                        <FolderIcon size={18} />
+                                                    </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
                                                         className="action-btn hover:text-red-500 hover:bg-red-50"
@@ -587,6 +812,42 @@ const UserDashboard = () => {
                         <div className="modal-actions">
                             <button className="modal-btn cancel" onClick={() => setIsCreateFolderOpen(false)}>취소</button>
                             <button className="modal-btn create" onClick={handleCreateFolder}>만들기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move Modal (Folder Picker) */}
+            {moveData && (
+                <div className="modal-overlay" onClick={() => setMoveData(null)}>
+                    <div className="modal-content move-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">이동할 위치 선택</div>
+                        <div className="folder-list-container full-scrollbar">
+                            {/* Root option */}
+                            <div
+                                className={`folder-item ${selectedTargetId === null ? 'selected' : ''}`}
+                                onClick={() => setSelectedTargetId(null)}
+                            >
+                                <HardDrive size={18} />
+                                <span>내 드라이브</span>
+                            </div>
+                            {/* Folder list */}
+                            {folders.filter(f => !f.trashed && f.id !== moveData.id).map(folder => (
+                                <div
+                                    key={`target-${folder.id}`}
+                                    className={`folder-item ${selectedTargetId === folder.id ? 'selected' : ''}`}
+                                    onClick={() => setSelectedTargetId(folder.id)}
+                                    style={{ paddingLeft: '32px' }} // Indent for hierarchy visual (fake for now)
+                                >
+                                    <FolderIcon size={18} />
+                                    <span>{folder.name}</span>
+                                </div>
+                            ))}
+                            {folders.length === 0 && <div className="p-4 text-center text-gray-500">폴더가 없습니다.</div>}
+                        </div>
+                        <div className="modal-actions">
+                            <button className="modal-btn cancel" onClick={() => setMoveData(null)}>취소</button>
+                            <button className="modal-btn create" onClick={executeMove}>여기로 이동</button>
                         </div>
                     </div>
                 </div>

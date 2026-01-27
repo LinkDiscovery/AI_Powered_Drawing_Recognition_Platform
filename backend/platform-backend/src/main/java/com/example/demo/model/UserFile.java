@@ -139,4 +139,12 @@ public class UserFile {
     public void setTrashedAt(LocalDateTime trashedAt) {
         this.trashedAt = trashedAt;
     }
+
+    public Long getFolderId() {
+        return folderId;
+    }
+
+    public void setFolderId(Long folderId) {
+        this.folderId = folderId;
+    }
 }

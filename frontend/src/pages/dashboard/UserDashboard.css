@@ -642,3 +642,77 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+/* Move Modal Specifics */
+.move-modal {
+    width: 480px;
+    max-height: 80vh;
+}
+
+.folder-list-container {
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    height: 320px;
+    overflow-y: auto;
+    background: #FAFAFA;
+}
+
+.folder-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--divider-color);
+    transition: all var(--transition-fast);
+}
+
+.folder-item:hover {
+    background-color: #F3F4F6;
+}
+
+.folder-item.selected {
+    background-color: #EEF2FF;
+    /* Indigo 50 */
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.folder-item.selected svg {
+    color: var(--primary-color);
+}
+
+/* Custom Scrollbar for list */
+.full-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.full-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.full-scrollbar::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+/* Drag & Drop */
+.drag-over {
+    border-color: var(--primary-color) !important;
+    background-color: #EEF2FF !important;
+    /* Indigo 50 */
+    box-shadow: 0 0 0 2px var(--primary-color) inset;
+}
+
+.drag-over-text {
+    color: var(--primary-color) !important;
+    font-weight: 700 !important;
+    background-color: #EEF2FF;
+    border-radius: 4px;
+}
+
+.nav-drag-over {
+    background-color: #EEF2FF !important;
+    color: var(--primary-color) !important;
+    font-weight: 600 !important;
+}
