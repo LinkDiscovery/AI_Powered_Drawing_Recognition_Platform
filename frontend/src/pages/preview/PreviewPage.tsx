@@ -6,6 +6,7 @@ import Sidebar from '../../components/layout/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import type { BBox } from '../../components/SelectionOverlay'; // Import BBox type
+import PreviewOnboardingTour from '../../components/PreviewOnboardingTour';
 
 export default function PreviewPage() {
     const navigate = useNavigate();
@@ -117,11 +118,14 @@ export default function PreviewPage() {
 
     return (
         <div style={styles.appShell}>
+            <PreviewOnboardingTour />
             {/* Left Sidebar with Tool Control */}
-            <Sidebar
-                activeTool={activeTool}
-                onToolChange={(tool: ToolType) => setActiveTool(activeTool === tool ? 'none' : tool)}
-            />
+            <div id="sidebar-tools">
+                <Sidebar
+                    activeTool={activeTool}
+                    onToolChange={(tool: ToolType) => setActiveTool(activeTool === tool ? 'none' : tool)}
+                />
+            </div>
 
             <div style={styles.mainArea}>
                 {/* Header */}
@@ -174,6 +178,7 @@ export default function PreviewPage() {
                                     style={styles.actionBtn}
                                     onClick={() => activeItem && navigate('/ai-recognition', { state: { fileId: activeItem.dbId } })}
                                     title="AI 인식으로 이동"
+                                    id="preview-ai-btn" // Added ID for Tour
                                 >
                                     AI 인식
                                 </button>
@@ -188,13 +193,14 @@ export default function PreviewPage() {
                                 <button
                                     style={{ ...styles.actionBtn, background: '#2563eb', color: 'white', borderColor: '#2563eb' }}
                                     onClick={handleDownload}
+                                    id="preview-download-btn" // Added ID for Tour
                                 >
                                     다운로드
                                 </button>
                             </div>
                         </div>
 
-                        <div style={styles.viewerContainer}>
+                        <div style={styles.viewerContainer} id="preview-viewer">
                             {activeItem?.file ? (
                                 <PdfViewer
                                     file={activeItem.file}
