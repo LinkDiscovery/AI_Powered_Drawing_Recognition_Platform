@@ -60,7 +60,7 @@ export default function PreviewPage() {
                     bboxes = initialBBoxes;
                 }
             } catch (e) {
-                console.error('Failed to parse bbox data:', e);
+                // console.error('Failed to parse bbox data:', e);
             }
 
             const jsonContent = JSON.stringify({
@@ -85,9 +85,9 @@ export default function PreviewPage() {
             document.body.removeChild(b);
             URL.revokeObjectURL(jsonUrl);
 
-            console.log('Downloaded image and metadata JSON');
+            // console.log('Downloaded image and metadata JSON');
         } else {
-            console.log('Downloaded image only (no bbox data)');
+            // console.log('Downloaded image only (no bbox data)');
         }
     };
 
