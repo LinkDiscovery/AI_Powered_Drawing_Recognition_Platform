@@ -1,9 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import HomeOnboardingTour from '../../components/HomeOnboardingTour';
 
 export default function HomePage() {
     return (
         <div style={styles.container}>
+            <HomeOnboardingTour />
             {/* Background Video */}
             <video
                 src="/assets/intro-video.mp4"
@@ -25,10 +27,10 @@ export default function HomePage() {
                         AI로 즉시 추출하고 데이터 자산으로 변환하십시오.
                     </p>
                     <div style={styles.actions}>
-                        <Link to="/upload" style={styles.primaryButton}>
+                        <Link to="/upload" style={styles.primaryButton} className="get-started-button" id="get-started-btn">
                             Get Started
                         </Link>
-                        <Link to="/dashboard" style={styles.secondaryButton}>
+                        <Link to="/dashboard" style={styles.secondaryButton} className="dashboard-button" id="dashboard-btn">
                             Dashboard
                         </Link>
                     </div>
@@ -123,17 +125,20 @@ const styles: Record<string, React.CSSProperties> = {
         transition: 'all 0.2s ease',
         border: '1px solid #ffffff',
         cursor: 'pointer',
+        display: 'inline-block', // Added for correct box model
     },
     secondaryButton: {
         padding: '16px 40px',
         fontSize: '16px',
         fontWeight: '600',
         color: '#ffffff',
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: '4px',
         textDecoration: 'none',
-        border: '1px solid #ffffff', // White border
         transition: 'all 0.2s ease',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
         cursor: 'pointer',
+        backdropFilter: 'blur(10px)',
+        display: 'inline-block', // Added for correct box model
     },
 };

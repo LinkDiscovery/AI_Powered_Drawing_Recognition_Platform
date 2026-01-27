@@ -5,7 +5,7 @@
   --text: #111;
   --muted: #6b7280;
   --primary: #2563eb;
-  zoom: 1.1;
+  /* zoom: 1.1;  <-- REMOVED: interfering with Joyride positioning */
 }
 
 * {
