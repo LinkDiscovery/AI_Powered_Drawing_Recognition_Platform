@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 // Removed DashboardSidebar import as it is now inlined for custom styling
@@ -288,7 +288,8 @@ const UserDashboard = () => {
 
     const [moveData, setMoveData] = useState<{ id: number, type: 'file' | 'folder' } | null>(null);
     const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null);
-    const [draggedItem, setDraggedItem] = useState<{ id: number, type: 'file' | 'folder' } | null>(null);
+    const [draggedItem, setDraggedItem] = useState<{ id: number, type: 'file' | 'folder', name: string } | null>(null);
+    const dragLayerRef = useRef<HTMLDivElement>(null);
 
     // Reset selection when modal opens/closes
     useEffect(() => {
@@ -297,6 +298,7 @@ const UserDashboard = () => {
 
     const executeMove = async () => {
         if (!moveData || !token) return;
+
         await performMove(moveData.id, moveData.type, selectedTargetId);
         setMoveData(null);
     };
@@ -333,14 +335,33 @@ const UserDashboard = () => {
         } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
     };
 
-    const handleDragStart = (e: React.DragEvent, id: number, type: 'file' | 'folder') => {
+    const handleDragStart = (e: React.DragEvent, id: number, type: 'file' | 'folder', name: string) => {
         e.dataTransfer.setData('application/json', JSON.stringify({ id, type }));
         e.dataTransfer.effectAllowed = 'move';
-        setDraggedItem({ id, type });
+
+        // Set empty drag image to hide native ghost
+        const emptyImg = new Image();
+        emptyImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(emptyImg, 0, 0);
+
+        setDraggedItem({ id, type, name });
+    };
+
+    // Global drag over to track cursor position
+    const handleContainerDragOver = (e: React.DragEvent) => {
+        e.preventDefault(); // Necessary to allow dropping anywhere (and track mouse)
+        // Direct DOM manipulation for performance (no re-renders)
+        if (draggedItem && dragLayerRef.current) {
+            const x = e.clientX + 12; // Offset right so cursor sits nicely next to it
+            const y = e.clientY;      // Align with cursor Y
+            // translateY(-50%) centers the element vertically on the cursor Y
+            dragLayerRef.current.style.transform = `translate(${x}px, ${y}px) translateY(-50%)`;
+        }
     };
 
     const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); // Necessary to allow dropping
+        e.preventDefault();
+        e.stopPropagation(); // Keep specific target active
         e.dataTransfer.dropEffect = 'move';
         e.currentTarget.classList.add('drag-over');
     };
@@ -351,24 +372,73 @@ const UserDashboard = () => {
 
     const handleDrop = async (e: React.DragEvent, targetFolderId: number) => {
         e.preventDefault();
+        e.stopPropagation();
         e.currentTarget.classList.remove('drag-over');
 
         const data = e.dataTransfer.getData('application/json');
-        if (!data) return;
+        if (!data) {
+            // Clean up if drop happened but no data (shouldn't happen with our D&D)
+            setDraggedItem(null);
+            return;
+        }
 
         try {
             const item = JSON.parse(data);
-            if (item.type === 'folder' && item.id === targetFolderId) return; // Prevent self-drop
+            if (item.type === 'folder' && item.id === targetFolderId) {
+                setDraggedItem(null);
+                return; // Prevent self-drop
+            }
 
             await performMove(item.id, item.type, targetFolderId);
-            setDraggedItem(null);
         } catch (err) {
             console.error('Drop error', err);
+        } finally {
+            setDraggedItem(null);
         }
     };
 
+    // End drag if dropped outside or cancelled
+    const handleDragEnd = () => {
+        setDraggedItem(null);
+    };
+
     return (
-        <div className="dashboard-container">
+        <div
+            className="dashboard-container"
+            onDragOver={handleContainerDragOver}
+            onDragEnd={handleDragEnd}
+        >
+            {/* Custom Drag Layer */}
+            {draggedItem && (
+                <div
+                    ref={dragLayerRef}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        pointerEvents: 'none',
+                        zIndex: 9999,
+                        backgroundColor: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        border: '1px solid #E5E7EB',
+                        opacity: 1, // Explicitly opaque
+                        willChange: 'transform' // Hint for optimization
+                    }}
+                >
+                    {draggedItem.type === 'folder' ? (
+                        <FolderIcon size={20} className="text-gray-400" fill="currentColor" />
+                    ) : (
+                        <FileText size={20} className="text-red-500" />
+                    )}
+                    <span className="font-medium text-sm text-gray-900">{draggedItem.name}</span>
+                </div>
+            )}
+
             {/* Sidebar */}
             <div className="dashboard-sidebar">
                 <div className="sidebar-content">
@@ -563,7 +633,7 @@ const UserDashboard = () => {
                                         key={`folder-${folder.id}`}
                                         className="folder-card group"
                                         draggable={!folder.trashed}
-                                        onDragStart={(e) => handleDragStart(e, folder.id, 'folder')}
+                                        onDragStart={(e) => handleDragStart(e, folder.id, 'folder', folder.name)}
                                         onDragOver={(e) => !folder.trashed && handleDragOver(e)}
                                         onDragLeave={handleDragLeave}
                                         onDrop={(e) => !folder.trashed && handleDrop(e, folder.id)}
@@ -607,7 +677,7 @@ const UserDashboard = () => {
                                         key={file.id}
                                         className="group relative"
                                         draggable={!file.isTrashed}
-                                        onDragStart={(e) => handleDragStart(e, file.id, 'file')}
+                                        onDragStart={(e) => handleDragStart(e, file.id, 'file', file.name)}
                                     >
                                         <ProjectCard
                                             title={file.name}
@@ -658,7 +728,7 @@ const UserDashboard = () => {
                                         className="list-row group"
                                         onClick={() => handleFileClick(file)}
                                         draggable={!file.isTrashed}
-                                        onDragStart={(e) => handleDragStart(e, file.id, 'file')}
+                                        onDragStart={(e) => handleDragStart(e, file.id, 'file', file.name)}
                                     >
                                         <div className={`icon-wrapper-base ${file.name.toLowerCase().endsWith('.pdf') ? 'icon-pdf' : 'icon-image'}`}>
                                             {file.name.toLowerCase().endsWith('.pdf') ? (

@@ -30,3 +30,7 @@
 ## 4. 특이 사항
 *   휴지통에 있는 항목은 드래그 불가능하도록 처리했습니다.
 *   DragEvent의 `dataTransfer`를 사용하여 이동할 아이템의 ID와 타입을 전달합니다.
+*   **드래그 고스트 개선 (Custom Layer & Optimization)**:
+    *   **Custom Layer**: `setDragImage`에 빈 이미지를 사용하여 기본 고스트를 숨기고, React 컴포넌트(`div`)로 커스텀 고스트를 직접 렌더링했습니다.
+    *   **Performance Optimization**: 마우스 위치 추적 시 `useState`로 인한 리렌더링 딜레이를 방지하기 위해, **`useRef`와 직접적인 DOM 조작 (`transform`)** 방식을 사용하여 드래그 레이어가 마우스 포인터를 즉각적으로 따라오도록 개선했습니다.
+    *   **Positioning**: 드래그 레이어와 마우스 포인터 간의 오차를 최소화(`offset: 5px`)하고, **`translateY(-50%)`를 적용하여 마우스 포인터가 드래그 중인 아이템의 수직 중앙**에 오도록 조정했습니다. 이를 통해 사용자는 아이템을 '잡고' 있는 듯한 직관적인 느낌을 받을 수 있습니다.
