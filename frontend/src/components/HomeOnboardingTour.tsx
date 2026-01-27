@@ -5,6 +5,7 @@ import { tourStyles, tourLocale, commonTourProps } from './tourConfig';
 
 const HomeOnboardingTour = () => {
     const [run, setRun] = useState(false);
+    const [tourKey, setTourKey] = useState(0);
     const { user } = useAuth();
 
     const steps = [
@@ -32,13 +33,33 @@ const HomeOnboardingTour = () => {
         // Force tour for test@example.com regardless of localStorage
         const shouldRun = !hasSeenTour || (user?.email === 'test@example.com');
 
+        let timer: number | undefined;
         if (shouldRun) {
             // Simple delay only, no manual scrolling
-            const timer = setTimeout(() => {
+            timer = setTimeout(() => {
                 setRun(true);
             }, 1000);
-            return () => clearTimeout(timer);
         }
+
+        // ALWAYS set up the event listener for restart
+        const handleRestart = () => {
+            console.log('Home tour restart triggered');
+            localStorage.removeItem('hasSeenTour_home');
+            setRun(false);
+            setTimeout(() => {
+                setTourKey(prev => prev + 1);
+                setRun(true);
+            }, 50);
+        };
+        window.addEventListener('restart-home-tour', handleRestart);
+
+        return () => {
+            if (timer) {
+                clearTimeout(timer);
+            }
+            window.removeEventListener('restart-home-tour', handleRestart);
+        };
+
     }, [user]);
 
     const handleTourEnd = (data: CallBackProps) => {
@@ -52,6 +73,7 @@ const HomeOnboardingTour = () => {
 
     return (
         <Joyride
+            key={tourKey}
             steps={steps}
             run={run}
             callback={handleTourEnd}

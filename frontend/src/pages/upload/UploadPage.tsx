@@ -255,6 +255,32 @@ export default function UploadPage() {
         onChange={onInputChange}
         style={{ display: 'none' }}
       />
+
+      {/* Floating Help Button */}
+      <button
+        onClick={() => window.dispatchEvent(new Event('restart-upload-tour'))}
+        style={{
+          position: 'fixed',
+          bottom: '32px',
+          right: '32px',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          color: '#4b5563',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.3s ease',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        }}
+        aria-label="도움말"
+      >
+        <span style={{ fontSize: '20px' }}>❓</span>
+      </button>
     </main>
   );
 }

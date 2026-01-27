@@ -235,6 +235,36 @@ export default function SmallpdfHeader() {
             ))}
           </ul>
 
+          {/* Help Icon Button */}
+          <button
+            onClick={() => {
+              const pathname = location.pathname;
+              let eventName = 'restart-home-tour'; // default
+
+              if (pathname === '/upload') {
+                eventName = 'restart-upload-tour';
+              } else if (pathname === '/preview') {
+                eventName = 'restart-preview-tour';
+              } else if (pathname === '/dashboard') {
+                eventName = 'restart-dashboard-tour';
+              } else if (pathname === '/ai-recognition') {
+                eventName = 'restart-airecognition-tour';
+              }
+
+              console.log(`Dispatching ${eventName} from header help button`);
+              window.dispatchEvent(new Event(eventName));
+            }}
+            className="sp-help-btn"
+            aria-label="도움말"
+            title="투어 다시보기"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </button>
+
           <div className="sp-auth">
             {isAuthenticated && user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
