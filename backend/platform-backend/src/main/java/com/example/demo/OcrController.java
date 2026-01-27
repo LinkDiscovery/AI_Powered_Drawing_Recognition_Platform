@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @RestController
@@ -54,8 +55,28 @@ public class OcrController {
             // Perform OCR
             String extractedText = ocrService.performOcr(filePath, bbox);
 
-            // Parse and Save
-            TitleBlockText titleBlockText = ocrService.parseText(extractedText, userFile);
+            // Check for existing OCR result for this file
+            Optional<TitleBlockText> existingOpt = titleBlockTextRepository
+                    .findTopByUserFileIdOrderByProcessedAtDesc(fileId);
+
+            TitleBlockText titleBlockText;
+            if (existingOpt.isPresent()) {
+                // Update existing record
+                titleBlockText = existingOpt.get();
+                titleBlockText.setExtractedText(extractedText);
+
+                // Parse and update fields
+                TitleBlockText parsed = ocrService.parseText(extractedText, userFile);
+                titleBlockText.setProjectName(parsed.getProjectName());
+                titleBlockText.setDrawingName(parsed.getDrawingName());
+                titleBlockText.setDrawingNumber(parsed.getDrawingNumber());
+                titleBlockText.setScale(parsed.getScale());
+                titleBlockText.setProcessedAt(LocalDateTime.now());
+            } else {
+                // Create new record
+                titleBlockText = ocrService.parseText(extractedText, userFile);
+            }
+
             TitleBlockText saved = titleBlockTextRepository.save(titleBlockText);
 
             return ResponseEntity.ok(saved);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Scan, FileText, FolderOpen, Image as ImageIcon, Upload, Eye, AlertCircle, Save, X, Edit2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Scan, FileText, FolderOpen, Image as ImageIcon, Upload, Eye, AlertCircle, Save, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PdfViewer, { type ToolType } from '../../components/PdfViewer';
 import type { BBox } from '../../components/SelectionOverlay';
@@ -25,15 +25,15 @@ interface TitleBlockResult {
     drawingName: string;
     drawingNumber: string;
     scale: string;
+    processedAt?: string;
 }
 
 // 탭 타입 정의
 type SourceTab = 'preview' | 'storage';
 
 export default function AiRecognitionPage() {
-    const navigate = useNavigate();
     const location = useLocation();
-    const { user, token, openLoginModal } = useAuth();
+    const { user, token, openLoginModal, isLoading: isAuthLoading } = useAuth();
 
     // 상태 관리
     const [activeTab, setActiveTab] = useState<SourceTab>('storage');
@@ -51,19 +51,21 @@ export default function AiRecognitionPage() {
     const [error, setError] = useState<string | null>(null);
     const [ocrResult, setOcrResult] = useState<TitleBlockResult | null>(null);
     const [showResultForm, setShowResultForm] = useState(false);
+    const [hasExistingOcr, setHasExistingOcr] = useState(false);
 
     // PDF 뷰어 상태
     const [activeTool, setActiveTool] = useState<ToolType>('none');
+    const [currentRotation, setCurrentRotation] = useState<number>(0); // OCR rotation
 
     // Ref for auto-scroll to results
     const resultsRef = React.useRef<HTMLDivElement>(null);
 
     // 로그인 확인
     useEffect(() => {
-        if (!user) {
+        if (!isAuthLoading && !user) {
             openLoginModal();
         }
-    }, [user, openLoginModal]);
+    }, [user, isAuthLoading, openLoginModal]);
 
     // 파일 목록 로드
     useEffect(() => {
@@ -116,6 +118,35 @@ export default function AiRecognitionPage() {
         }
     };
 
+    const fetchExistingOcrResult = async (fileId: number) => {
+        if (!token) return;
+
+        try {
+            const response = await fetch(`/api/ocr/results/${fileId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                const results: TitleBlockResult[] = await response.json();
+                if (results && results.length > 0) {
+                    // Use the most recent result
+                    const latest = results[results.length - 1];
+                    setOcrResult(latest);
+                    setHasExistingOcr(true);
+                    setShowResultForm(true);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch OCR results:', err);
+        }
+
+        // No results found or error occurred
+        setHasExistingOcr(false);
+        setOcrResult(null);
+        setShowResultForm(false);
+    };
+
     const handleFileSelect = async (file: FileItem) => {
         if (!token) return;
 
@@ -125,6 +156,7 @@ export default function AiRecognitionPage() {
         setCurrentBBoxes([]);
         setOcrResult(null);
         setShowResultForm(false);
+        setHasExistingOcr(false);
         setIsFileLoading(true);
 
         try {
@@ -148,8 +180,15 @@ export default function AiRecognitionPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             let bboxes: BBox[] = [];
+            let fileRotation = 0;  // Default rotation
             if (detailRes.ok) {
                 const detailData = await detailRes.json();
+
+                // Get file-level rotation
+                if (detailData.rotation !== undefined && detailData.rotation !== null) {
+                    fileRotation = detailData.rotation;
+                }
+
                 if (detailData.bboxes && Array.isArray(detailData.bboxes)) {
                     // Backend BBox: { id, x, y, width, height, type, page, frontendId }
                     // Frontend BBox: { id, rect: { x, y, width, height }, type, page }
@@ -167,9 +206,14 @@ export default function AiRecognitionPage() {
                 }
             }
 
+            // Set rotation first so PdfViewer gets correct initial value
+            setCurrentRotation(fileRotation);
             setSelectedFileBlob(fileObj);
             setInitialBBoxes(bboxes);
             setCurrentBBoxes(bboxes);
+
+            // 3. 기존 OCR 결과 조회
+            await fetchExistingOcrResult(file.id);
 
         } catch (err) {
             console.error(err);
@@ -196,20 +240,6 @@ export default function AiRecognitionPage() {
         setOcrResult(null);
 
         try {
-            const response = await fetch(`/api/ocr/process/${selectedFile.id}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(titleBox.rect) // Send rect only? Controller expects BBox structure probably?
-                // Wait, Controller expects BBox object which has id, type, rect(x,y,w,h)
-                // Actually parse logic on backend uses bbox.getX()...
-                // Frontend BBox structure: { id, type, rect: {x,y,width,height}, page }
-                // Backend BBox structure: { ..., x, y, width, height, page }
-                // I need to map it correctly.
-            });
-
             // Fix: Map frontend bbox to backend expected format
             // Backend OcrController.processOcr expects @RequestBody BBox
             // Backend BBox has fields x, y, width, height, page.
@@ -219,10 +249,11 @@ export default function AiRecognitionPage() {
                 width: titleBox.rect.width,
                 height: titleBox.rect.height,
                 page: titleBox.page || 1,
-                type: titleBox.type
+                type: titleBox.type,
+                rotation: currentRotation  // Include rotation for vertical text OCR
             };
 
-            const realResponse = await fetch(`/api/ocr/process/${selectedFile.id}`, {
+            const response = await fetch(`/api/ocr/process/${selectedFile.id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -231,12 +262,12 @@ export default function AiRecognitionPage() {
                 body: JSON.stringify(payload)
             });
 
-            if (!realResponse.ok) {
-                const errMsg = await realResponse.text();
+            if (!response.ok) {
+                const errMsg = await response.text();
                 throw new Error(`OCR 처리 실패: ${errMsg}`);
             }
 
-            const result: TitleBlockResult = await realResponse.json();
+            const result: TitleBlockResult = await response.json();
             setOcrResult(result);
             setShowResultForm(true);
 
@@ -349,10 +380,10 @@ export default function AiRecognitionPage() {
 
                         {/* 파일 목록 */}
                         <div className="file-list-container">
-                            {isLoading ? (
+                            {isAuthLoading || isLoading ? (
                                 <div className="empty-state">
                                     <div className="loading-spinner"></div>
-                                    <p>파일을 불러오는 중...</p>
+                                    <p>{isAuthLoading ? '로그인 확인 중...' : '파일을 불러오는 중...'}</p>
                                 </div>
                             ) : error ? (
                                 <div className="empty-state">
@@ -394,8 +425,28 @@ export default function AiRecognitionPage() {
                                 표제부 미리보기
                             </h2>
                             {selectedFile && (
-                                <div style={{ fontSize: '13px', color: '#6B7280' }}>
+                                <div style={{ fontSize: '13px', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {selectedFile.name}
+                                    {hasExistingOcr && ocrResult && (
+                                        <span style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            padding: '2px 8px',
+                                            borderRadius: '4px',
+                                            backgroundColor: '#10B981',
+                                            color: 'white',
+                                            fontSize: '11px',
+                                            fontWeight: '500'
+                                        }}>
+                                            ✓ OCR 처리 완료
+                                            {ocrResult.processedAt && (
+                                                <span style={{ opacity: 0.9 }}>
+                                                    ({new Date(ocrResult.processedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })})
+                                                </span>
+                                            )}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -413,7 +464,9 @@ export default function AiRecognitionPage() {
                                         activeTool={activeTool}
                                         onToolChange={setActiveTool}
                                         initialBBoxes={initialBBoxes}
+                                        initialRotation={currentRotation}
                                         onBBoxChange={setCurrentBBoxes}
+                                        onRotationChange={setCurrentRotation}
                                     />
                                 </div>
                             ) : (
@@ -428,6 +481,29 @@ export default function AiRecognitionPage() {
 
                         {/* OCR 컨트롤 */}
                         <div className="ocr-controls">
+                            {/* Rotation selector synced with PDF viewer rotation button */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+                                <label style={{ fontSize: '13px', color: '#6B7280', whiteSpace: 'nowrap' }} title="PDF 뷰어의 회전 버튼(↻)과 연동됩니다">
+                                    OCR 회전:
+                                </label>
+                                <select
+                                    value={currentRotation}
+                                    onChange={(e) => setCurrentRotation(Number(e.target.value))}
+                                    style={{
+                                        padding: '6px 10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #D1D5DB',
+                                        fontSize: '13px',
+                                        backgroundColor: 'white',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value={0}>0° (가로)</option>
+                                    <option value={90}>90° (세로↑)</option>
+                                    <option value={180}>180°</option>
+                                    <option value={270}>270° (세로↓)</option>
+                                </select>
+                            </div>
                             <button
                                 className="btn-primary"
                                 disabled={!selectedFileBlob || isFileLoading || isProcessing}
@@ -441,7 +517,7 @@ export default function AiRecognitionPage() {
                                 ) : (
                                     <>
                                         <Scan size={18} />
-                                        OCR 인식 시작
+                                        {hasExistingOcr ? '다시 인식하기' : 'OCR 인식 시작'}
                                     </>
                                 )}
                             </button>
@@ -452,7 +528,14 @@ export default function AiRecognitionPage() {
                     {showResultForm && ocrResult && (
                         <div className="ocr-results-section" ref={resultsRef}>
                             <div className="section-header">
-                                <h2><FileText size={18} /> 인식 결과</h2>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <h2><FileText size={18} /> 인식 결과</h2>
+                                    {ocrResult.processedAt && (
+                                        <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 'normal' }}>
+                                            처리 시간: {new Date(ocrResult.processedAt).toLocaleString('ko-KR')}
+                                        </span>
+                                    )}
+                                </div>
                                 <button onClick={() => setShowResultForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                                     <X size={18} />
                                 </button>

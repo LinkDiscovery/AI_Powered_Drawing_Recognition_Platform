@@ -23,6 +23,7 @@ interface AuthContextType {
     isLoginModalOpen: boolean;
     openLoginModal: () => void;
     closeLoginModal: () => void;
+    isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [expiresAt, setExpiresAt] = useState<number | null>(null);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const { showToast } = useToast();
 
     const openLoginModal = () => setIsLoginModalOpen(true);
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 localStorage.removeItem(LOCAL_STORAGE_KEY);
             }
         }
+        setIsLoading(false);
     }, []);
 
     // Check for token expiration
@@ -288,7 +291,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: localStorage.getItem(TOKEN_KEY),
         isLoginModalOpen,
         openLoginModal,
-        closeLoginModal
+        closeLoginModal,
+        isLoading
     };
 
     return (

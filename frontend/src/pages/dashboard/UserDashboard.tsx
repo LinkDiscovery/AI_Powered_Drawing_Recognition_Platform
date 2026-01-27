@@ -6,7 +6,7 @@ import ProjectCard from '../../components/ProjectCard';
 import {
     Search, Bell, Grid, List as ListIcon, MoreVertical,
     Folder as FolderIcon, FileText, Image as ImageIcon,
-    Trash2, Upload, Plus, HardDrive, Clock, FolderPlus
+    Trash2, Upload, Plus, HardDrive, Clock, FolderPlus, RotateCcw
 } from 'lucide-react';
 import { useFileContext } from '../../context/FileContext';
 import './UserDashboard.css';
@@ -223,17 +223,67 @@ const UserDashboard = () => {
     const moveToTrash = async (id: number, type: 'file' | 'folder') => {
         if (!token) return;
 
+        // If already in trash, confirm permanent delete
+        if (activeNav === 'trash') {
+            permanentDeleteFile(id, type);
+            return;
+        }
+
         const isConfirmed = window.confirm(`${type === 'file' ? '파일' : '폴더'}을(를) 휴지통으로 이동하시겠습니까?`);
         if (!isConfirmed) return;
 
-        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}`;
+        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}/trash`;
         try {
-            await fetch(`http://localhost:8080${endpoint}`, {
-                method: type === 'folder' ? 'DELETE' : 'POST',
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
+                method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            fetchData();
-        } catch (e) { console.error(e); }
+            if (res.ok) {
+                fetchData();
+            } else {
+                const msg = await res.text();
+                alert(`이동 실패: ${msg}`);
+            }
+        } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
+    };
+
+    const restoreFile = async (id: number, type: 'file' | 'folder') => {
+        if (!token) return;
+
+        const endpoint = type === 'file' ? `/api/files/${id}/restore` : `/api/folders/${id}/restore`;
+        try {
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchData();
+            } else {
+                const msg = await res.text();
+                alert(`복원 실패: ${msg}`);
+            }
+        } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
+    };
+
+    const permanentDeleteFile = async (id: number, type: 'file' | 'folder') => {
+        if (!token) return;
+
+        const isConfirmed = window.confirm(`정말로 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`);
+        if (!isConfirmed) return;
+
+        const endpoint = type === 'file' ? `/api/files/${id}` : `/api/folders/${id}`;
+        try {
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchData();
+            } else {
+                const msg = await res.text();
+                alert(`삭제 실패: ${msg}`);
+            }
+        } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
     };
 
     return (
@@ -429,12 +479,31 @@ const UserDashboard = () => {
                                             onClick={() => handleFileClick(file)}
                                         />
                                         <div className="card-actions">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
-                                                className="action-btn hover:text-red-500 hover:bg-red-50"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
+                                            {activeNav === 'trash' ? (
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); restoreFile(file.id, 'file'); }}
+                                                        className="action-btn hover:text-green-600 hover:bg-green-50"
+                                                        title="복원"
+                                                    >
+                                                        <RotateCcw size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); permanentDeleteFile(file.id, 'file'); }}
+                                                        className="action-btn hover:text-red-600 hover:bg-red-50"
+                                                        title="영구 삭제"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                    className="action-btn hover:text-red-500 hover:bg-red-50"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (
@@ -455,19 +524,40 @@ const UserDashboard = () => {
                                         <div className="row-meta">{formatDate(file.uploadTime)}</div>
                                         <div className="row-meta">{formatFileSize(file.size || 0)}</div>
                                         <div className="action-buttons-row">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
-                                                className="action-btn hover:text-red-500 hover:bg-red-50"
-                                                title="삭제"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                            <button
-                                                className="action-btn hover:text-gray-700 hover:bg-gray-100"
-                                                onClick={(e) => { e.stopPropagation(); }}
-                                            >
-                                                <MoreVertical size={18} />
-                                            </button>
+                                            {activeNav === 'trash' ? (
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); restoreFile(file.id, 'file'); }}
+                                                        className="action-btn hover:text-green-600 hover:bg-green-50"
+                                                        title="복원"
+                                                    >
+                                                        <RotateCcw size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); permanentDeleteFile(file.id, 'file'); }}
+                                                        className="action-btn hover:text-red-600 hover:bg-red-50"
+                                                        title="영구 삭제"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="action-btn hover:text-red-500 hover:bg-red-50"
+                                                        title="삭제"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                    <button
+                                                        className="action-btn hover:text-gray-700 hover:bg-gray-100"
+                                                        onClick={(e) => { e.stopPropagation(); }}
+                                                    >
+                                                        <MoreVertical size={18} />
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )

@@ -14,4 +14,7 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
 
     // Find trashed folders
     List<Folder> findByUserIdAndIsTrashedTrue(Long userId);
+
+    // Find sub-folders for recursive delete
+    List<Folder> findByParentFolderId(Long parentId);
 }

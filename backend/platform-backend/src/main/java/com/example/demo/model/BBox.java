@@ -38,11 +38,14 @@ public class BBox {
     @Column(columnDefinition = "integer default 1")
     private Integer page = 1;
 
+    @Column(columnDefinition = "integer default 0")
+    private Integer rotation = 0; // 0, 90, 180, 270 degrees
+
     public BBox() {
     }
 
     public BBox(UserFile userFile, String type, Double x, Double y, Double width, Double height, Integer page,
-            String frontendId) {
+            String frontendId, Integer rotation) {
         this.userFile = userFile;
         this.type = type;
         this.x = x;
@@ -51,6 +54,7 @@ public class BBox {
         this.height = height;
         this.page = (page == null) ? 1 : page;
         this.frontendId = frontendId;
+        this.rotation = (rotation == null) ? 0 : rotation;
     }
 
     // Getters and Setters
@@ -121,5 +125,13 @@ public class BBox {
 
     public void setPage(Integer page) {
         this.page = page;
+    }
+
+    public Integer getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(Integer rotation) {
+        this.rotation = rotation;
     }
 }
