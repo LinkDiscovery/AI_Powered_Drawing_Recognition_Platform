@@ -22,6 +22,9 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "has_seen_tour", nullable = false, columnDefinition = "boolean default false")
+    private Boolean hasSeenTour = false;
+
     public User() {
     }
 
@@ -29,6 +32,15 @@ public class User {
         this.email = email;
         this.password = password;
         this.name = name;
+        this.hasSeenTour = false;
+    }
+
+    public Boolean getHasSeenTour() {
+        return hasSeenTour;
+    }
+
+    public void setHasSeenTour(Boolean hasSeenTour) {
+        this.hasSeenTour = hasSeenTour;
     }
 
     public Long getId() {

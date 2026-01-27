@@ -38,7 +38,7 @@ public class AuthController {
             com.example.demo.model.User user = userService.register(request.getEmail(), request.getPassword(),
                     request.getName());
             String token = jwtUtil.generateToken(user.getEmail());
-            return ResponseEntity.ok(new LoginResponse(token, user.getEmail(), user.getName()));
+            return ResponseEntity.ok(new LoginResponse(token, user.getEmail(), user.getName(), user.getHasSeenTour()));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
@@ -49,7 +49,7 @@ public class AuthController {
         com.example.demo.model.User user = userService.login(request.getEmail(), request.getPassword());
         if (user != null) {
             String token = jwtUtil.generateToken(user.getEmail());
-            return ResponseEntity.ok(new LoginResponse(token, user.getEmail(), user.getName()));
+            return ResponseEntity.ok(new LoginResponse(token, user.getEmail(), user.getName(), user.getHasSeenTour()));
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
         }
@@ -75,16 +75,19 @@ public class AuthController {
                 // Integrate with UserService: ensure user exists
                 // In a real app, we check if email exists in DB, if not create one.
                 // For this memory store, let's just create if not exists
-                if (userService.login(email, "google-auth-placeholder") == null) {
+                com.example.demo.model.User user = userService.login(email, "google-auth-placeholder");
+                if (user == null) {
                     try {
-                        userService.register(email, "google-auth-placeholder", name);
+                        user = userService.register(email, "google-auth-placeholder", name);
                     } catch (Exception e) {
-                        /* ignore if race condition */ }
+                        /* ignore if race condition */
+                        user = userService.login(email, "google-auth-placeholder");
+                    }
                 }
 
                 String appToken = jwtUtil.generateToken(email);
 
-                return ResponseEntity.ok(new LoginResponse(appToken, email, name));
+                return ResponseEntity.ok(new LoginResponse(appToken, email, name, user.getHasSeenTour()));
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid ID token.");
             }
@@ -103,18 +106,16 @@ public class AuthController {
             String email = jwtUtil.extractEmail(token);
             // If we get here, token is valid
             String newToken = jwtUtil.generateToken(email);
-            // Retrieve name if possible, or just send back partial info.
-            // Since we don't look up user here for speed, we might need user info or just
-            // return token.
-            // Ideally lookup user to get name.
-            com.example.demo.model.User user = userService.login(email, null); // CAUTION: login might check password.
-            // Better to add a findByEmail to service, but 'login' here in this mock setup
-            // might be checking email only?
-            // Let's check UserService. If unavailable, just return token.
 
-            String name = (user != null) ? user.getName() : "User";
+            // Retrieve user info
+            com.example.demo.model.User user = userService.getUser(email);
 
-            return ResponseEntity.ok(new LoginResponse(newToken, email, name));
+            if (user == null) {
+                // Fallback if user not found (should not happen with valid token)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not found");
+            }
+
+            return ResponseEntity.ok(new LoginResponse(newToken, email, user.getName(), user.getHasSeenTour()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired token");
         }

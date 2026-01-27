@@ -9,6 +9,7 @@ import {
     Trash2, Upload, Plus, HardDrive, Clock, FolderPlus, RotateCcw
 } from 'lucide-react';
 import { useFileContext } from '../../context/FileContext';
+import DashboardOnboardingTour from '../../components/DashboardOnboardingTour';
 import './UserDashboard.css';
 
 // Define types locally
@@ -131,7 +132,6 @@ const UserDashboard = () => {
 
             if (fileRes.ok) setFiles(await fileRes.json());
             setFolders(fetchedFolders);
-
         } catch (error) {
             console.error(error);
         } finally {
@@ -189,7 +189,7 @@ const UserDashboard = () => {
             const fileDetailsRes = await fetch(`http://localhost:8080/api/files/${file.id}`, { headers });
             if (!fileDetailsRes.ok) throw new Error('Failed to fetch file details');
             const fileDetails = await fileDetailsRes.json();
-            console.log('File with BBoxes:', fileDetails);
+            // console.log('File with BBoxes:', fileDetails);
 
             // 2. Download File Blob
             const res = await fetch(`http://localhost:8080/api/files/${file.id}/download`, { headers });
@@ -408,6 +408,7 @@ const UserDashboard = () => {
             onDragOver={handleContainerDragOver}
             onDragEnd={handleDragEnd}
         >
+            <DashboardOnboardingTour />
             {/* Custom Drag Layer */}
             {draggedItem && (
                 <div
@@ -446,6 +447,7 @@ const UserDashboard = () => {
                     <div className="new-folder-wrapper">
                         <button
                             className="new-folder-btn"
+                            id="dashboard-new-btn" // Added ID for Tour
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setIsNewDropdownOpen(!isNewDropdownOpen);
@@ -482,7 +484,7 @@ const UserDashboard = () => {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="sidebar-nav">
+                    <nav className="sidebar-nav" id="dashboard-sidebar-nav">
                         <div
                             className={`nav-item ${activeNav === 'drive' ? 'active' : ''}`}
                             onClick={() => { setActiveNav('drive'); setCurrentFolderId(null); setFolderStack([{ id: null, name: '내 드라이브' }]); }}
@@ -513,25 +515,22 @@ const UserDashboard = () => {
                         <div
                             className={`nav-item ${activeNav === 'trash' ? 'active' : ''}`}
                             onClick={() => setActiveNav('trash')}
+                            id="nav-item-trash" // Added ID for Tour
                         >
                             <Trash2 size={18} />
                             <span>휴지통</span>
                         </div>
-                    </nav>
 
-                    {/* Footer */}
-                    <div className="sidebar-footer">
-                        <div className="storage-status">
-                            <div className="text-xs text-gray-500 mb-1">저장공간</div>
-                            <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
-                                <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: '24%' }}></div>
-                            </div>
-                            <div className="text-xs text-gray-500">24.4GB / 100GB 사용 중</div>
+                        {/* Help / Tour Replay - Pushed to bottom */}
+                        <div
+                            className="nav-item"
+                            onClick={() => window.dispatchEvent(new Event('restart-dashboard-tour'))}
+                            style={{ marginTop: 'auto' }}
+                        >
+                            <span style={{ fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '18px' }}>❓</span>
+                            <span>도움말</span>
                         </div>
-                        <button className="btn-upgrade">
-                            추가 저장용량 구매
-                        </button>
-                    </div>
+                    </nav>
                 </div>
             </div>
 
@@ -622,7 +621,7 @@ const UserDashboard = () => {
                 </div>
 
                 {/* Dashboard Content */}
-                <div className="dashboard-content no-scrollbar">
+                <div className="dashboard-content no-scrollbar" id="dashboard-file-list">
                     {/* Folders Section */}
                     {folders.length > 0 && (
                         <div className="section-group">
@@ -669,7 +668,7 @@ const UserDashboard = () => {
 
                     {/* Files Section */}
                     <div className="section-group">
-                        <h3 className="section-title">Files</h3>
+                        <h3 className="section-title" id="dashboard-files-title">Files</h3>
                         <div className={viewMode === 'grid' ? 'file-grid' : 'file-list'}>
                             {files && files.map(file => (
                                 viewMode === 'grid' ? (

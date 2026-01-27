@@ -497,7 +497,7 @@ export default function PdfViewer({ file, onSaveSelection, initialSelection, ini
   return (
     <div style={containerStyle}>
       {/* Control Bar */}
-      <div style={controlBarStyle}>
+      <div style={controlBarStyle} id="pdf-control-bar">
         {/* ... (existing control bar content) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}>
           <span style={{ fontSize: 18 }}>📄</span>

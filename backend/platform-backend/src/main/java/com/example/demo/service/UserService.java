@@ -51,4 +51,19 @@ public class UserService {
         Optional<User> userOptional = userRepository.findByEmail(email);
         return userOptional.map(User::getNotes).orElse("");
     }
+
+    public void completeTour(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            user.setHasSeenTour(true);
+            userRepository.save(user);
+        } else {
+            throw new RuntimeException("User not found");
+        }
+    }
+
+    public User getUser(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
 }

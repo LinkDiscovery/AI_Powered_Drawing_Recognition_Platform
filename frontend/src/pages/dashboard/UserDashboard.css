@@ -43,7 +43,8 @@
 /* Base Layout */
 .dashboard-container {
     display: flex;
-    height: 100vh;
+    height: calc(100vh - 64px);
+    /* Subtract header height to prevent scroll */
     background-color: var(--bg-app);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--text-primary);

@@ -5,6 +5,7 @@ import './UploadPage.css';
 
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import UploadOnboardingTour from '../../components/UploadOnboardingTour';
 
 export default function UploadPage() {
   const navigate = useNavigate();
@@ -79,6 +80,10 @@ export default function UploadPage() {
       {/* Since replace_file_content works on contiguous blocks, I have to target the function first then the button separately or together if close. */}
       {/* They are far apart. I will do function first. */}
 
+      <UploadOnboardingTour />
+
+      {/* 0. Breadcrumb */}
+
 
       {/* 0. Breadcrumb */}
       <div className="tool-breadcrumb">
@@ -105,7 +110,7 @@ export default function UploadPage() {
         <div className="tool-hero-banner">
           {hasItems ? (
             /* File List Card (White card inside the banner) */
-            <div className="uploader-list-card" onClick={(e) => e.stopPropagation()}>
+            <div className="uploader-list-card" id="uploader-list-card" onClick={(e) => e.stopPropagation()}>
               <div className="uploader-list-header">
                 <h3 className="uploader-list-title">분석할 도면 목록 ({items.length})</h3>
                 <button
@@ -194,6 +199,7 @@ export default function UploadPage() {
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onClick={openFilePicker}
+              id="upload-dropzone" // Target for Onboarding Tour
             >
               <div className="uploader-icon">
                 {/* Blueprint/Scan Icon */}
@@ -249,6 +255,32 @@ export default function UploadPage() {
         onChange={onInputChange}
         style={{ display: 'none' }}
       />
+
+      {/* Floating Help Button */}
+      <button
+        onClick={() => window.dispatchEvent(new Event('restart-upload-tour'))}
+        style={{
+          position: 'fixed',
+          bottom: '32px',
+          right: '32px',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          color: '#4b5563',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.3s ease',
+          zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        }}
+        aria-label="도움말"
+      >
+        <span style={{ fontSize: '20px' }}>❓</span>
+      </button>
     </main>
   );
 }

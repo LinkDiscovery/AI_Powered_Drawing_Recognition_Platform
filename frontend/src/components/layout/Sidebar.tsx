@@ -68,6 +68,11 @@ const Sidebar = ({ activeTool, onToolChange }: SidebarProps) => {
 
             <div style={styles.bottom}>
                 <NavItem icon="📂" label="문서" onClick={() => navigate('/dashboard')} />
+                <NavItem
+                    icon="❓"
+                    label="도움말"
+                    onClick={() => window.dispatchEvent(new Event('restart-preview-tour'))}
+                />
                 <NavItem icon="👤" label="계정" />
             </div>
         </aside>
@@ -94,7 +99,8 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '12px 0',
         color: 'white',
         flexShrink: 0,
-        zIndex: 50
+        zIndex: 50,
+        height: '100vh' // Ensure sidebar takes full height
     },
     logoItem: {
         marginBottom: 20,
