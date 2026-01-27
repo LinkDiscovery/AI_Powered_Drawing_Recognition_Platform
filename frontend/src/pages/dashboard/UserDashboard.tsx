@@ -286,6 +286,41 @@ const UserDashboard = () => {
         } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
     };
 
+    const [moveData, setMoveData] = useState<{ id: number, type: 'file' | 'folder' } | null>(null);
+
+    const handleMove = async (targetFolderId: number | null) => {
+        if (!moveData || !token) return;
+
+        // Circular check is simple on frontend: if moving folder to itself
+        if (moveData.type === 'folder' && moveData.id === targetFolderId) {
+            alert('자신에게로 이동할 수 없습니다.');
+            return;
+        }
+
+        const endpoint = moveData.type === 'file'
+            ? `/api/files/${moveData.id}/move`
+            : `/api/folders/${moveData.id}/move`;
+
+        try {
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ targetFolderId })
+            });
+
+            if (res.ok) {
+                setMoveData(null);
+                fetchData();
+            } else {
+                const msg = await res.text();
+                alert(`이동 실패: ${msg}`);
+            }
+        } catch (e) { console.error(e); alert('오류가 발생했습니다.'); }
+    };
+
     return (
         <div className="dashboard-container">
             {/* Sidebar */}
@@ -451,6 +486,15 @@ const UserDashboard = () => {
                                         </div>
                                         <span className="folder-name">{folder.name}</span>
                                         <div className="card-actions">
+                                            {activeNav !== 'trash' && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setMoveData({ id: folder.id, type: 'folder' }); }}
+                                                    className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                    title="이동"
+                                                >
+                                                    <FolderIcon size={16} /> {/* Move Icon substitute */}
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); moveToTrash(folder.id, 'folder'); }}
                                                 className="action-btn hover:text-red-500 hover:bg-red-50"
@@ -497,12 +541,21 @@ const UserDashboard = () => {
                                                     </button>
                                                 </>
                                             ) : (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
-                                                    className="action-btn hover:text-red-500 hover:bg-red-50"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setMoveData({ id: file.id, type: 'file' }); }}
+                                                        className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                        title="이동"
+                                                    >
+                                                        <FolderIcon size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
+                                                        className="action-btn hover:text-red-500 hover:bg-red-50"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -543,6 +596,13 @@ const UserDashboard = () => {
                                                 </>
                                             ) : (
                                                 <>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setMoveData({ id: file.id, type: 'file' }); }}
+                                                        className="action-btn hover:text-blue-500 hover:bg-blue-50"
+                                                        title="이동"
+                                                    >
+                                                        <FolderIcon size={18} />
+                                                    </button>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); moveToTrash(file.id, 'file'); }}
                                                         className="action-btn hover:text-red-500 hover:bg-red-50"
@@ -587,6 +647,40 @@ const UserDashboard = () => {
                         <div className="modal-actions">
                             <button className="modal-btn cancel" onClick={() => setIsCreateFolderOpen(false)}>취소</button>
                             <button className="modal-btn create" onClick={handleCreateFolder}>만들기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move Modal (Simple Folder Picker) */}
+            {moveData && (
+                <div className="modal-overlay" onClick={() => setMoveData(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">이동할 폴더 선택</div>
+                        <div className="folder-list-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {/* Root option */}
+                            <div
+                                className="folder-item p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
+                                onClick={() => handleMove(null)}
+                            >
+                                <HardDrive size={18} />
+                                <span>내 드라이브 (최상위)</span>
+                            </div>
+                            {/* Flattened folder list for simplicity (can be hierarchical later) */}
+                            {folders.filter(f => !f.trashed && f.id !== moveData.id).map(folder => (
+                                <div
+                                    key={`target-${folder.id}`}
+                                    className="folder-item p-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2 pl-6"
+                                    onClick={() => handleMove(folder.id)}
+                                >
+                                    <FolderIcon size={18} />
+                                    <span>{folder.name}</span>
+                                </div>
+                            ))}
+                            {folders.length === 0 && <div className="p-4 text-center text-gray-500">폴더가 없습니다.</div>}
+                        </div>
+                        <div className="modal-actions">
+                            <button className="modal-btn cancel" onClick={() => setMoveData(null)}>취소</button>
                         </div>
                     </div>
                 </div>

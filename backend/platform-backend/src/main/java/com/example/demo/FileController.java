@@ -533,4 +533,34 @@ public class FileController {
             return ResponseEntity.status(400).body("Error: " + e.getMessage());
         }
     }
+
+    @org.springframework.web.bind.annotation.PutMapping("/api/files/{id}/move")
+    public ResponseEntity<?> moveFile(@org.springframework.web.bind.annotation.PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestBody java.util.Map<String, Long> payload,
+            @org.springframework.web.bind.annotation.RequestHeader("Authorization") String token) {
+        try {
+            if (token == null || !token.startsWith("Bearer ")) {
+                return ResponseEntity.status(401).body("Unauthorized");
+            }
+            String jwt = token.substring(7);
+            String email = jwtUtil.extractEmail(jwt);
+            com.example.demo.model.User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            com.example.demo.model.UserFile file = userFileRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("File not found"));
+
+            if (!user.getId().equals(file.getUserId())) {
+                return ResponseEntity.status(403).body("Forbidden");
+            }
+
+            Long targetFolderId = payload.get("targetFolderId");
+            file.setFolderId(targetFolderId); // Can be null for root
+            userFileRepository.save(file);
+
+            return ResponseEntity.ok("Moved");
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body("Error: " + e.getMessage());
+        }
+    }
 }
