@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import com.example.demo.client.AIServiceClient;
 import com.example.demo.model.BBox;
 import com.example.demo.model.TitleBlockText;
 import com.example.demo.model.UserFile;

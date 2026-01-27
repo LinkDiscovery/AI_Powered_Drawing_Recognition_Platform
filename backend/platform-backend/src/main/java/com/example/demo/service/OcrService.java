@@ -1,12 +1,12 @@
 package com.example.demo.service;
 
+import com.example.demo.client.AIServiceClient;
 import com.example.demo.model.BBox;
 import com.example.demo.model.TitleBlockText;
 import com.example.demo.model.UserFile;
-import net.sourceforge.tess4j.Tesseract;
-import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.apache.pdfbox.Loader;
 
@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,7 +22,10 @@ import java.util.regex.Pattern;
 @Service
 public class OcrService {
 
-    public String performOcr(Path filePath, BBox bbox) throws IOException, TesseractException {
+    @Autowired
+    private AIServiceClient aiServiceClient;
+
+    public String performOcr(Path filePath, BBox bbox) throws IOException, AIServiceClient.AIServiceException {
         File file = filePath.toFile();
         BufferedImage image = null;
 
@@ -68,11 +72,21 @@ public class OcrService {
             throw new IOException("Could not load image for OCR");
         }
 
-        Tesseract tesseract = new Tesseract();
-        tesseract.setDatapath("tessdata");
-        tesseract.setLanguage("kor+eng");
+        // Save cropped image to temporary file for Python OCR server
+        Path tempImagePath = Files.createTempFile("ocr_crop_", ".png");
+        try {
+            File tempImageFile = tempImagePath.toFile();
+            ImageIO.write(image, "png", tempImageFile);
 
-        return tesseract.doOCR(image);
+            // Call Python OCR server
+            AIServiceClient.OcrResult result = aiServiceClient.extractText(tempImageFile);
+
+            // Return full text from OCR result
+            return result.getFullText();
+        } finally {
+            // Clean up temporary file
+            Files.deleteIfExists(tempImagePath);
+        }
     }
 
     public TitleBlockText parseText(String text, UserFile userFile) {
