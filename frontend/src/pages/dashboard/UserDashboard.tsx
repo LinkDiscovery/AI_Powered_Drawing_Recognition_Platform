@@ -9,6 +9,7 @@ import {
     Trash2, Upload, Plus, HardDrive, Clock, FolderPlus, RotateCcw
 } from 'lucide-react';
 import { useFileContext } from '../../context/FileContext';
+import DashboardOnboardingTour from '../../components/DashboardOnboardingTour';
 import './UserDashboard.css';
 
 // Define types locally
@@ -408,6 +409,7 @@ const UserDashboard = () => {
             onDragOver={handleContainerDragOver}
             onDragEnd={handleDragEnd}
         >
+            <DashboardOnboardingTour />
             {/* Custom Drag Layer */}
             {draggedItem && (
                 <div
@@ -446,6 +448,7 @@ const UserDashboard = () => {
                     <div className="new-folder-wrapper">
                         <button
                             className="new-folder-btn"
+                            id="dashboard-new-btn" // Added ID for Tour
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setIsNewDropdownOpen(!isNewDropdownOpen);
@@ -482,7 +485,7 @@ const UserDashboard = () => {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="sidebar-nav">
+                    <nav className="sidebar-nav" id="dashboard-sidebar-nav">
                         <div
                             className={`nav-item ${activeNav === 'drive' ? 'active' : ''}`}
                             onClick={() => { setActiveNav('drive'); setCurrentFolderId(null); setFolderStack([{ id: null, name: '내 드라이브' }]); }}
@@ -513,6 +516,7 @@ const UserDashboard = () => {
                         <div
                             className={`nav-item ${activeNav === 'trash' ? 'active' : ''}`}
                             onClick={() => setActiveNav('trash')}
+                            id="nav-item-trash" // Added ID for Tour
                         >
                             <Trash2 size={18} />
                             <span>휴지통</span>
@@ -622,7 +626,7 @@ const UserDashboard = () => {
                 </div>
 
                 {/* Dashboard Content */}
-                <div className="dashboard-content no-scrollbar">
+                <div className="dashboard-content no-scrollbar" id="dashboard-file-list">
                     {/* Folders Section */}
                     {folders.length > 0 && (
                         <div className="section-group">
@@ -669,7 +673,7 @@ const UserDashboard = () => {
 
                     {/* Files Section */}
                     <div className="section-group">
-                        <h3 className="section-title">Files</h3>
+                        <h3 className="section-title" id="dashboard-files-title">Files</h3>
                         <div className={viewMode === 'grid' ? 'file-grid' : 'file-list'}>
                             {files && files.map(file => (
                                 viewMode === 'grid' ? (
