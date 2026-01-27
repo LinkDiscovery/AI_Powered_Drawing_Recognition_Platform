@@ -21,10 +21,14 @@ public class FolderController {
     private final UserRepository userRepository;
     private final JwtUtil jwtUtil;
 
-    public FolderController(FolderRepository folderRepository, UserRepository userRepository, JwtUtil jwtUtil) {
+    private final com.example.demo.repository.UserFileRepository userFileRepository;
+
+    public FolderController(FolderRepository folderRepository, UserRepository userRepository, JwtUtil jwtUtil,
+            com.example.demo.repository.UserFileRepository userFileRepository) {
         this.folderRepository = folderRepository;
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
+        this.userFileRepository = userFileRepository;
     }
 
     private User getUserFromToken(String token) {
@@ -69,7 +73,7 @@ public class FolderController {
         return ResponseEntity.ok(folders);
     }
 
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/trash")
     public ResponseEntity<?> trashFolder(@RequestHeader("Authorization") String token, @PathVariable Long id) {
         User user = getUserFromToken(token);
         if (user == null)
@@ -85,7 +89,40 @@ public class FolderController {
         return ResponseEntity.status(404).body("Folder not found");
     }
 
-    @PostMapping("/{id}/restore")
+    @DeleteMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<?> deleteFolder(@RequestHeader("Authorization") String token, @PathVariable Long id) {
+        User user = getUserFromToken(token);
+        if (user == null)
+            return ResponseEntity.status(401).body("Unauthorized");
+
+        Optional<Folder> folderOpt = folderRepository.findById(id);
+        if (folderOpt.isPresent() && folderOpt.get().getUserId().equals(user.getId())) {
+            try {
+                deleteFolderRecursive(id);
+                return ResponseEntity.ok("Folder permanently deleted");
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body("Error deleting folder: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.status(404).body("Folder not found");
+    }
+
+    private void deleteFolderRecursive(Long folderId) {
+        // 1. Find sub-folders
+        List<Folder> subFolders = folderRepository.findByParentFolderId(folderId);
+        for (Folder sub : subFolders) {
+            deleteFolderRecursive(sub.getId());
+        }
+
+        // 2. Delete files in this folder
+        userFileRepository.deleteByFolderId(folderId);
+
+        // 3. Delete this folder
+        folderRepository.deleteById(folderId);
+    }
+
+    @PutMapping("/{id}/restore")
     public ResponseEntity<?> restoreFolder(@RequestHeader("Authorization") String token, @PathVariable Long id) {
         User user = getUserFromToken(token);
         if (user == null)

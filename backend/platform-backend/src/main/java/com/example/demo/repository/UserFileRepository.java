@@ -22,4 +22,7 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
 
     // 4. Trash View
     List<UserFile> findByUserIdAndIsTrashedTrueOrderByUploadTimeDesc(Long userId);
+
+    // Delete files in folder (for hard delete of folder)
+    void deleteByFolderId(Long folderId);
 }

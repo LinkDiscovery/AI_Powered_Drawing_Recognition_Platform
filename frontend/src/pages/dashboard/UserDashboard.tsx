@@ -232,10 +232,10 @@ const UserDashboard = () => {
         const isConfirmed = window.confirm(`${type === 'file' ? '파일' : '폴더'}을(를) 휴지통으로 이동하시겠습니까?`);
         if (!isConfirmed) return;
 
-        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}`;
+        const endpoint = type === 'file' ? `/api/files/${id}/trash` : `/api/folders/${id}/trash`;
         try {
             const res = await fetch(`http://localhost:8080${endpoint}`, {
-                method: type === 'file' ? 'PUT' : 'DELETE', // Files use Soft Delete (PUT), Folders use Hard Delete (DELETE) for now
+                method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -248,10 +248,11 @@ const UserDashboard = () => {
     };
 
     const restoreFile = async (id: number, type: 'file' | 'folder') => {
-        if (!token || type === 'folder') return; // Folder restore not implemented yet
+        if (!token) return;
 
+        const endpoint = type === 'file' ? `/api/files/${id}/restore` : `/api/folders/${id}/restore`;
         try {
-            const res = await fetch(`http://localhost:8080/api/files/${id}/restore`, {
+            const res = await fetch(`http://localhost:8080${endpoint}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
