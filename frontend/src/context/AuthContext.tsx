@@ -127,6 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         if (Date.now() >= decoded.exp * 1000) {
                             console.log("Token expired on load, logging out");
                             logout();
+                        } else {
+                            // Token is valid, sync with server to get latest data (e.g., hasSeenTour)
+                            // We need to set the token state first so syncUserProfile can use it, 
+                            // but syncUserProfile uses localStorage directly, so acceptable.
+                            // However, let's call it async
+                            syncUserProfile();
                         }
                     }
                 } catch (e) {
